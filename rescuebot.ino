@@ -82,21 +82,20 @@ void motor_stop() {
     analogWrite(MOTOR_REAR_RIGHT_SPEED_PIN, MOTOR_SPEED_STOPPED);
 }
 
-String html = "<h1>RescueBot</h1>
-<p>
-<button onclick=\"updateMotordirection(0)\">Forward</button>
-<button onclick=\"updateMotordirection(1)\">Left</button>
-<button onclick=\"updateMotordirection(2)\">Right</button>
-<button onclick=\"updateMotordirection(3)\">Backwards</button>
-</p>
-<script>
-function updateMotordirection (direction) {
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', '/api/update_motor?direction=' + direction, true);
-    xhr.send();
-}
-</script>
-";
+String html = "<h1>RescueBot</h1>\
+<p>\
+<button onclick=\"updateMotordirection(0)\">Forward</button>\
+<button onclick=\"updateMotordirection(1)\">Left</button>\
+<button onclick=\"updateMotordirection(2)\">Right</button>\
+<button onclick=\"updateMotordirection(3)\">Backwards</button>\
+</p>\
+<script>\
+function updateMotordirection (direction) {\
+    var xhr = new XMLHttpRequest();\
+    xhr.open('GET', '/api/update_motor?direction=' + direction, true);\
+    xhr.send();\
+}\
+</script>";
 
 ESP8266WebServer server(80);
 
@@ -133,7 +132,7 @@ void setup() {
     });
 
     server.on("/api/update_motor", []() {
-        int32_t motor_direction = atoi(server.arg("direction"));
+        int32_t motor_direction = atoi(server.arg("direction").c_str());
 
         if (motor_direction == API_MOTOR_DIRECTION_FORWARD) {
             motor_move_forward();
