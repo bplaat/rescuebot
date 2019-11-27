@@ -11,14 +11,14 @@
 #define MOTOR_FRONT_LEFT_DIRECTION_PIN D0
 #define MOTOR_FRONT_LEFT_SPEED_PIN D1
 
-#define MOTOR_REAR_LEFT_DIRECTION_PIN D1
-#define MOTOR_REAR_LEFT_SPEED_PIN D2
+#define MOTOR_REAR_LEFT_DIRECTION_PIN D2
+#define MOTOR_REAR_LEFT_SPEED_PIN D3
 
-#define MOTOR_FRONT_RIGHT_DIRECTION_PIN D3
-#define MOTOR_FRONT_RIGHT_SPEED_PIN D4
+#define MOTOR_FRONT_RIGHT_DIRECTION_PIN D4
+#define MOTOR_FRONT_RIGHT_SPEED_PIN D5
 
-#define MOTOR_REAR_RIGHT_DIRECTION_PIN D5
-#define MOTOR_REAR_RIGHT_SPEED_PIN D6
+#define MOTOR_REAR_RIGHT_DIRECTION_PIN D6
+#define MOTOR_REAR_RIGHT_SPEED_PIN D7
 
 #define API_MOTOR_DIRECTION_FORWARD 0
 #define API_MOTOR_DIRECTION_LEFT 1
@@ -84,9 +84,9 @@ void motor_stop() {
 
 String html = "<h1>RescueBot</h1>
 <p>
-<button id=\"updateMotordirection(0)\">Forward</button>
-<button id=\"updateMotordirection(1)\">Left</button>
-<button id=\"updateMotordirection(2)\">Right</button>
+<button onclick=\"updateMotordirection(0)\">Forward</button>
+<button onclick=\"updateMotordirection(1)\">Left</button>
+<button onclick=\"updateMotordirection(2)\">Right</button>
 <button onclick=\"updateMotordirection(3)\">Backwards</button>
 </p>
 <script>
