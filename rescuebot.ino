@@ -1,118 +1,75 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 #include "config.h"
+#include "controls.h"
 
-#define MOTOR_DIRECTION_FORWARD 0
-#define MOTOR_DIRECTION_BACKWARDS 1
+#define MOTOR_LEFT_FORWARD_PIN D0
+#define MOTOR_LEFT_BACKWARDS_PIN D1
+#define MOTOR_LEFT_ENABLE_PIN D2
 
-#define MOTOR_SPEED_STOPPED 0
-#define MOTOR_SPEED_FULL 255
+#define MOTOR_RIGHT_FORWARD_PIN D3
+#define MOTOR_RIGHT_BACKWARDS_PIN D4
+#define MOTOR_RIGHT_ENABLE_PIN D5
 
-#define MOTOR_FRONT_LEFT_DIRECTION_PIN D0
-#define MOTOR_FRONT_LEFT_SPEED_PIN D1
-
-#define MOTOR_REAR_LEFT_DIRECTION_PIN D2
-#define MOTOR_REAR_LEFT_SPEED_PIN D3
-
-#define MOTOR_FRONT_RIGHT_DIRECTION_PIN D4
-#define MOTOR_FRONT_RIGHT_SPEED_PIN D5
-
-#define MOTOR_REAR_RIGHT_DIRECTION_PIN D6
-#define MOTOR_REAR_RIGHT_SPEED_PIN D7
-
-#define API_MOTOR_DIRECTION_FORWARD 0
-#define API_MOTOR_DIRECTION_LEFT 1
-#define API_MOTOR_DIRECTION_RIGHT 2
-#define API_MOTOR_DIRECTION_BACKWARDS 3
+#define API_MOTOR_STATE_STOP 0
+#define API_MOTOR_STATE_FORWARD 1
+#define API_MOTOR_STATE_LEFT 2
+#define API_MOTOR_STATE_RIGHT 3
+#define API_MOTOR_STATE_BACKWARDS 4
 
 void motor_move_forward() {
-    digitalWrite(MOTOR_FRONT_LEFT_DIRECTION_PIN, MOTOR_DIRECTION_FORWARD);
-    analogWrite(MOTOR_FRONT_LEFT_SPEED_PIN, MOTOR_SPEED_FULL);
+    digitalWrite(MOTOR_LEFT_FORWARD_PIN, HIGH);
+    digitalWrite(MOTOR_LEFT_BACKWARDS_PIN, LOW);
+    digitalWrite(MOTOR_LEFT_ENABLE_PIN, HIGH);
 
-    digitalWrite(MOTOR_REAR_LEFT_DIRECTION_PIN, MOTOR_DIRECTION_FORWARD);
-    analogWrite(MOTOR_REAR_LEFT_SPEED_PIN, MOTOR_SPEED_FULL);
-
-    digitalWrite(MOTOR_FRONT_RIGHT_DIRECTION_PIN, MOTOR_DIRECTION_FORWARD);
-    analogWrite(MOTOR_FRONT_RIGHT_SPEED_PIN, MOTOR_SPEED_FULL);
-
-    digitalWrite(MOTOR_REAR_RIGHT_DIRECTION_PIN, MOTOR_DIRECTION_FORWARD);
-    analogWrite(MOTOR_REAR_RIGHT_SPEED_PIN, MOTOR_SPEED_FULL);
+    digitalWrite(MOTOR_RIGHT_FORWARD_PIN, HIGH);
+    digitalWrite(MOTOR_RIGHT_BACKWARDS_PIN, LOW);
+    digitalWrite(MOTOR_RIGHT_ENABLE_PIN, HIGH);
 }
 
 void motor_move_backwards() {
-    digitalWrite(MOTOR_FRONT_LEFT_DIRECTION_PIN, MOTOR_DIRECTION_BACKWARDS);
-    analogWrite(MOTOR_FRONT_LEFT_SPEED_PIN, MOTOR_SPEED_FULL);
+    digitalWrite(MOTOR_LEFT_FORWARD_PIN, LOW);
+    digitalWrite(MOTOR_LEFT_BACKWARDS_PIN, HIGH);
+    digitalWrite(MOTOR_LEFT_ENABLE_PIN, HIGH);
 
-    digitalWrite(MOTOR_REAR_LEFT_DIRECTION_PIN, MOTOR_DIRECTION_BACKWARDS);
-    analogWrite(MOTOR_REAR_LEFT_SPEED_PIN, MOTOR_SPEED_FULL);
-
-    digitalWrite(MOTOR_FRONT_RIGHT_DIRECTION_PIN, MOTOR_DIRECTION_BACKWARDS);
-    analogWrite(MOTOR_FRONT_RIGHT_SPEED_PIN, MOTOR_SPEED_FULL);
-
-    digitalWrite(MOTOR_REAR_RIGHT_DIRECTION_PIN, MOTOR_DIRECTION_BACKWARDS);
-    analogWrite(MOTOR_REAR_RIGHT_SPEED_PIN, MOTOR_SPEED_FULL);
+    digitalWrite(MOTOR_RIGHT_FORWARD_PIN, LOW);
+    digitalWrite(MOTOR_RIGHT_BACKWARDS_PIN, HIGH);
+    digitalWrite(MOTOR_RIGHT_ENABLE_PIN, HIGH);
 }
 
 void motor_turn_left() {
-    analogWrite(MOTOR_FRONT_LEFT_SPEED_PIN, MOTOR_SPEED_STOPPED);
-    analogWrite(MOTOR_REAR_LEFT_SPEED_PIN, MOTOR_SPEED_STOPPED);
+    digitalWrite(MOTOR_LEFT_ENABLE_PIN, LOW);
 
-    digitalWrite(MOTOR_FRONT_RIGHT_DIRECTION_PIN, MOTOR_DIRECTION_FORWARD);
-    analogWrite(MOTOR_FRONT_RIGHT_SPEED_PIN, MOTOR_SPEED_FULL);
-
-    digitalWrite(MOTOR_REAR_RIGHT_DIRECTION_PIN, MOTOR_DIRECTION_FORWARD);
-    analogWrite(MOTOR_REAR_RIGHT_SPEED_PIN, MOTOR_SPEED_FULL);
+    digitalWrite(MOTOR_RIGHT_FORWARD_PIN, HIGH);
+    digitalWrite(MOTOR_RIGHT_BACKWARDS_PIN, LOW);
+    digitalWrite(MOTOR_RIGHT_ENABLE_PIN, HIGH);
 }
 
 void motor_turn_right() {
-    digitalWrite(MOTOR_FRONT_LEFT_DIRECTION_PIN, MOTOR_DIRECTION_FORWARD);
-    analogWrite(MOTOR_FRONT_LEFT_SPEED_PIN, MOTOR_SPEED_FULL);
+    digitalWrite(MOTOR_LEFT_FORWARD_PIN, HIGH);
+    digitalWrite(MOTOR_LEFT_BACKWARDS_PIN, LOW);
+    digitalWrite(MOTOR_LEFT_ENABLE_PIN, HIGH);
 
-    digitalWrite(MOTOR_REAR_LEFT_DIRECTION_PIN, MOTOR_DIRECTION_FORWARD);
-    analogWrite(MOTOR_REAR_LEFT_SPEED_PIN, MOTOR_SPEED_FULL);
-
-    analogWrite(MOTOR_FRONT_RIGHT_SPEED_PIN, MOTOR_SPEED_STOPPED);
-    analogWrite(MOTOR_REAR_RIGHT_SPEED_PIN, MOTOR_SPEED_STOPPED);
+    digitalWrite(MOTOR_RIGHT_ENABLE_PIN, LOW);
 }
 
 void motor_stop() {
-    analogWrite(MOTOR_FRONT_LEFT_SPEED_PIN, MOTOR_SPEED_STOPPED);
-    analogWrite(MOTOR_REAR_LEFT_SPEED_PIN, MOTOR_SPEED_STOPPED);
-    analogWrite(MOTOR_FRONT_RIGHT_SPEED_PIN, MOTOR_SPEED_STOPPED);
-    analogWrite(MOTOR_REAR_RIGHT_SPEED_PIN, MOTOR_SPEED_STOPPED);
+    digitalWrite(MOTOR_LEFT_ENABLE_PIN, LOW);
+    digitalWrite(MOTOR_RIGHT_ENABLE_PIN, LOW);
 }
-
-String html = "<h1>RescueBot</h1>\
-<p>\
-<button onclick=\"updateMotordirection(0)\">Forward</button>\
-<button onclick=\"updateMotordirection(1)\">Left</button>\
-<button onclick=\"updateMotordirection(2)\">Right</button>\
-<button onclick=\"updateMotordirection(3)\">Backwards</button>\
-</p>\
-<script>\
-function updateMotordirection (direction) {\
-    var xhr = new XMLHttpRequest();\
-    xhr.open('GET', '/api/update_motor?direction=' + direction, true);\
-    xhr.send();\
-}\
-</script>";
 
 ESP8266WebServer server(80);
 
 void setup() {
     Serial.begin(9600);
 
-    pinMode(MOTOR_FRONT_LEFT_DIRECTION_PIN, OUTPUT);
-    pinMode(MOTOR_FRONT_LEFT_SPEED_PIN, OUTPUT);
+    pinMode(MOTOR_LEFT_FORWARD_PIN, OUTPUT);
+    pinMode(MOTOR_LEFT_BACKWARDS_PIN, OUTPUT);
+    pinMode(MOTOR_LEFT_ENABLE_PIN, OUTPUT);
 
-    pinMode(MOTOR_REAR_LEFT_DIRECTION_PIN, OUTPUT);
-    pinMode(MOTOR_REAR_LEFT_SPEED_PIN, OUTPUT);
-
-    pinMode(MOTOR_FRONT_RIGHT_DIRECTION_PIN, OUTPUT);
-    pinMode(MOTOR_FRONT_RIGHT_SPEED_PIN, OUTPUT);
-
-    pinMode(MOTOR_REAR_RIGHT_DIRECTION_PIN, OUTPUT);
-    pinMode(MOTOR_REAR_RIGHT_SPEED_PIN, OUTPUT);
+    pinMode(MOTOR_RIGHT_FORWARD_PIN, OUTPUT);
+    pinMode(MOTOR_RIGHT_BACKWARDS_PIN, OUTPUT);
+    pinMode(MOTOR_RIGHT_ENABLE_PIN, OUTPUT);
 
     Serial.print("\nConnecting to ");
     Serial.print(wifi_ssid);
@@ -128,23 +85,26 @@ void setup() {
     Serial.println(WiFi.localIP());
 
     server.on("/", []() {
-        server.send(200, "text/html", html);
+        server.send(200, "text/html", controls_html);
     });
 
     server.on("/api/update_motor", []() {
-        int32_t motor_direction = atoi(server.arg("direction").c_str());
+        int32_t motor_state = atoi(server.arg("state").c_str());
 
-        if (motor_direction == API_MOTOR_DIRECTION_FORWARD) {
+        if (motor_state == API_MOTOR_STATE_FORWARD) {
             motor_move_forward();
         }
-        if (motor_direction == API_MOTOR_DIRECTION_LEFT) {
+        if (motor_state == API_MOTOR_STATE_LEFT) {
             motor_turn_left();
         }
-        if (motor_direction == API_MOTOR_DIRECTION_RIGHT) {
+        if (motor_state == API_MOTOR_STATE_RIGHT) {
             motor_turn_right();
         }
-        if (motor_direction == API_MOTOR_DIRECTION_BACKWARDS) {
+        if (motor_state == API_MOTOR_STATE_BACKWARDS) {
             motor_move_backwards();
+        }
+        if (motor_state == API_MOTOR_STATE_STOP) {
+            motor_stop();
         }
 
         server.send(200, "application/json", "{\"message\":\"succesfull\"}");

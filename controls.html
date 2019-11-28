@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>RescueBot Controls</title>
+    <style>
+        html{height:100%}body{margin:0;height:100%}button{flex:1}
+        .controls-container{display:flex;height:100%}
+        .single-container{flex:1;display:flex;flex-direction:column}
+    </style>
+</head>
+<body>
+    <div class="controls-container">
+        <button onmousedown="updateMotorState(2)" onmouseup="updateMotorState(0)">&larr; Left</button>
+        <div class="single-container">
+            <button onmousedown="updateMotorState(1)" onmouseup="updateMotorState(0)">&uarr; Forward</button>
+            <button onmousedown="updateMotorState(4)" onmouseup="updateMotorState(0)">&darr; Backwards</button>
+        </div>
+        <button onmousedown="updateMotorState(3)" onmouseup="updateMotorState(0)">Right &rarr;</button>
+    </div>
+    <script>
+        function updateMotorState (state) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', '/api/update_motor?state=' + state, true);
+            xhr.send();
+        }
+    </script>
+</body>
+</html>
