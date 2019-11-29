@@ -19,6 +19,16 @@
 #define API_MOTOR_STATE_RIGHT 3
 #define API_MOTOR_STATE_BACKWARDS 4
 
+#define PULSE_SERVO_PIN D8
+
+#define ECHO_PIN_LOW_MOUNTED 10
+#define ECHO_PIN_HIGH_MOUNTED A0
+#define TRIGGER_PIN 9
+
+#define IR_OUT_RIGHT_PIN D7
+#define IR_OUT_LEFT_PIN D6
+
+
 void motor_move_forward() {
     digitalWrite(MOTOR_LEFT_FORWARD_PIN, HIGH);
     digitalWrite(MOTOR_LEFT_BACKWARDS_PIN, LOW);
@@ -63,7 +73,7 @@ void motor_stop() {
 ESP8266WebServer server(80);
 
 void setup() {
-    Serial.begin(9600);
+    Serial.begin(115200);
 
     pinMode(MOTOR_LEFT_FORWARD_PIN, OUTPUT);
     pinMode(MOTOR_LEFT_BACKWARDS_PIN, OUTPUT);
@@ -72,6 +82,16 @@ void setup() {
     pinMode(MOTOR_RIGHT_FORWARD_PIN, OUTPUT);
     pinMode(MOTOR_RIGHT_BACKWARDS_PIN, OUTPUT);
     pinMode(MOTOR_RIGHT_ENABLE_PIN, OUTPUT);
+
+    pinMode(PULSE_SERVO_PIN, OUTPUT);
+
+    pinMode(ECHO_PIN_LOW_MOUNTED, INPUT);
+    pinMode(ECHO_PIN_HIGH_MOUNTED, INPUT);
+    //pinMode(TRIGGER_PIN, OUTPUT);
+
+    pinMode(IR_OUT_RIGHT_PIN, INPUT);
+    pinMode(IR_OUT_LEFT_PIN, INPUT);
+
 
     Serial.print("\nConnecting to ");
     Serial.print(wifi_ssid);
