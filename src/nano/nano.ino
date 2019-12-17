@@ -1,9 +1,11 @@
 #include <Arduino.h>
 #include <Servo.h>
+#include <Wire.h>
 
-#define trigPin 2
-#define echoPinLow 3
-#define echoPinHigh 4
+#define FACTOR 100
+#define TRIG_PIN 2
+#define ECHO_PIN_LOW 3
+#define ECHO_PIN_HIGH 4
 #define IR_PIN_LEFT 5
 #define IR_PIN_RIGHT 6
 #define SERVO_PIN 9
@@ -13,10 +15,11 @@ Servo myservo;
 void setup()
 {
   Serial.begin(115200);
+  Wire.begin(10);
   myservo.attach(SERVO_PIN);
-  pinMode(trigPin, OUTPUT);
-  pinMode(echoPinLow, INPUT);
-  pinMode(echoPinHigh, INPUT);
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN_LOW, INPUT);
+  pinMode(ECHO_PIN_HIGH, INPUT);
 }
 
 void loop()
@@ -38,31 +41,38 @@ void loop()
   }
 }
 
-long getPulsDuration(int echoPin)
+uint16_t getPulsDuration(int echoPin)
 {
   long duration;
-  digitalWrite(trigPin, LOW);
+  digitalWrite(TRIG_PIN, LOW);
   delayMicroseconds(2);
-  digitalWrite(trigPin, HIGH);
+  digitalWrite(TRIG_PIN, HIGH);
   delayMicroseconds(10);
-  digitalWrite(trigPin, LOW);
+  digitalWrite(TRIG_PIN, LOW);
   duration = pulseIn(echoPin, HIGH);
-  return duration;
+  return (uint16_t)duration;
 }
 
 void ReadSensors()
 {
-  long duration = getPulsDuration(echoPinLow);
+  int16_t duration = getPulsDuration(ECHO_PIN_LOW);
   Serial.print("duration SensorLow: ");
   Serial.println(duration);
+  Wire.write(duration/FACTOR);
 
-  duration = getPulsDuration(echoPinHigh);
+  duration = getPulsDuration(ECHO_PIN_HIGH);
   Serial.print("duration SensorLow: ");
   Serial.println(duration);
+  Wire.write(duration/FACTOR);
 
   Serial.print("duration IRSensorLeft: ");
-  Serial.println(digitalRead(IR_PIN_LEFT));
+  uint8_t b = digitalRead(IR_PIN_LEFT);
+  Serial.println(b);
+  Wire.write(b);
+
 
   Serial.print("duration IRSensorRight: ");
-  Serial.println(digitalRead(IR_PIN_RIGHT));
+  b = digitalRead(IR_PIN_RIGHT);
+  Serial.println(b);
+  Wire.write(b);
 }
