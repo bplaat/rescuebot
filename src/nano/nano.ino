@@ -2,6 +2,11 @@
 #include <Servo.h>
 #include <Wire.h>
 
+uint8_t distanceLow;
+uint8_t distanceHigh;
+uint8_t irPinLeft;
+uint8_t irPinRight;
+
 #define FACTOR 100
 #define TRIG_PIN 2
 #define ECHO_PIN_LOW 3
@@ -9,13 +14,25 @@
 #define IR_PIN_LEFT 5
 #define IR_PIN_RIGHT 6
 #define SERVO_PIN 9
+#define I2C_ADDRESS 10
+
+int16_t duration = 0;
 
 Servo myservo;
+
+void sendValues()
+{
+  Wire.write(distanceLow);
+  Wire.write(distanceHigh);
+  Wire.write(irPinLeft);
+  Wire.write(irPinRight);
+}
 
 void setup()
 {
   Serial.begin(115200);
-  Wire.begin(10);
+  Wire.begin(I2C_ADDRESS);
+  Wire.onRequest(sendValues);
   myservo.attach(SERVO_PIN);
   pinMode(TRIG_PIN, OUTPUT);
   pinMode(ECHO_PIN_LOW, INPUT);
@@ -25,23 +42,21 @@ void setup()
 void loop()
 {
   int pos;
-
-  for (pos = 0; pos <= 180; pos += 1)
+  readSensors();
+  for (pos = 0; pos <= 180; pos += 2)
   { // goes from 0 degrees to 180 degrees
     // in steps of 1 degree
     myservo.write(pos); // tell servo to go to position in variable 'pos'
-    delay(15);          // waits 15ms for the servo to reach the position
-    ReadSensors();
+    delayMicroseconds(1000);
   }
-  for (pos = 180; pos >= 0; pos -= 1)
+  for (pos = 180; pos >= 0; pos -= 2)
   {                     // goes from 180 degrees to 0 degrees
     myservo.write(pos); // tell servo to go to position in variable 'pos'
-    delay(15);          // waits 15ms for the servo to reach the position
-    ReadSensors();
+    delayMicroseconds(1000);
   }
 }
 
-uint16_t getPulsDuration(int echoPin)
+long getPulsDuration(int echoPin)
 {
   long duration;
   digitalWrite(TRIG_PIN, LOW);
@@ -50,29 +65,26 @@ uint16_t getPulsDuration(int echoPin)
   delayMicroseconds(10);
   digitalWrite(TRIG_PIN, LOW);
   duration = pulseIn(echoPin, HIGH);
-  return (uint16_t)duration;
+  return duration;
 }
 
-void ReadSensors()
+void readSensors()
 {
-  int16_t duration = getPulsDuration(ECHO_PIN_LOW);
+  long durationLow = getPulsDuration(ECHO_PIN_LOW);
   Serial.print("duration SensorLow: ");
   Serial.println(duration);
-  Wire.write(duration/FACTOR);
+  distanceLow = duration / FACTOR;
 
-  duration = getPulsDuration(ECHO_PIN_HIGH);
+  long durationHigh = getPulsDuration(ECHO_PIN_HIGH);
   Serial.print("duration SensorLow: ");
   Serial.println(duration);
-  Wire.write(duration/FACTOR);
+  distanceHigh = duration / FACTOR;
 
   Serial.print("duration IRSensorLeft: ");
-  uint8_t b = digitalRead(IR_PIN_LEFT);
-  Serial.println(b);
-  Wire.write(b);
-
+  irPinLeft = digitalRead(IR_PIN_LEFT);
+  Serial.println(irPinLeft);
 
   Serial.print("duration IRSensorRight: ");
-  b = digitalRead(IR_PIN_RIGHT);
-  Serial.println(b);
-  Wire.write(b);
+  irPinRight = digitalRead(IR_PIN_RIGHT);
+  Serial.println(irPinRight);
 }

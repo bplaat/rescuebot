@@ -1,8 +1,12 @@
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
+#include <Wire.h>
 #include "config.hpp"
 #include "website.hpp"
+
+#define I2C_ADDRESS 10
+#define PROTOCOL_REQUEST_MESSAGE_LENGTH 4
 
 #define MOTOR_LEFT_FORWARD_PIN D0
 #define MOTOR_LEFT_BACKWARD_PIN D1
@@ -11,6 +15,12 @@
 #define MOTOR_RIGHT_FORWARD_PIN D3
 #define MOTOR_RIGHT_BACKWARD_PIN D4
 #define MOTOR_RIGHT_ENABLE_PIN D5
+
+uint8_t distance_to_ground;
+uint8_t distance_to_object;
+uint8_t ir_left;
+uint8_t ir_right;
+
 
 void motor_move_forward() {
     digitalWrite(MOTOR_LEFT_FORWARD_PIN, HIGH);
@@ -66,6 +76,7 @@ ESP8266WebServer server(80);
 
 void setup() {
     Serial.begin(115200);
+    Wire.begin();
 
     pinMode(MOTOR_LEFT_FORWARD_PIN, OUTPUT);
     pinMode(MOTOR_LEFT_BACKWARD_PIN, OUTPUT);
@@ -119,4 +130,10 @@ void setup() {
 
 void loop() {
     server.handleClient();
+    if (Wire.requestFrom(I2C_ADDRESS, PROTOCOL_REQUEST_MESSAGE_LENGTH) == PROTOCOL_REQUEST_MESSAGE_LENGTH) {
+        distance_to_ground = Wire.read();
+        distance_to_object = Wire.read();
+        ir_left = Wire.read();
+        ir_right = Wire.read();
+    }
 }
