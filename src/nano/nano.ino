@@ -13,6 +13,7 @@ uint8_t irPinRight;
 #define ECHO_PIN_HIGH 4
 #define IR_PIN_LEFT 5
 #define IR_PIN_RIGHT 6
+#define MAGNET_PIN 7
 #define SERVO_PIN 9
 #define I2C_ADDRESS 10
 
