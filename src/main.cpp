@@ -123,7 +123,7 @@ void motor_stop() {
 #define BORDER_LEFT 1
 #define BORDER_RIGHT 2
 
-uint8_t last_border_position;
+uint8_t last_border_position = BORDER_UNKOWN;
 
 // The different states
 #define STATE_STILL 0
@@ -149,8 +149,9 @@ uint8_t last_border_position;
 #define STATE_OVERIDE_MOVE_BACKWARD 16
 
 // The state variables
-uint8_t state;
-uint32_t state_time;
+bool auto_control = false;
+uint8_t state = STATE_STILL;
+uint32_t state_time = millis();
 
 // A function that sets the state and reflects it to the motors
 void set_state(uint8_t new_state) {
@@ -271,7 +272,7 @@ void update_state() {
     }
 
     if (state == STATE_AVOID_OBJECT_TURN_LEFT_FIRST && time_passed > 1000) {
-        set_state(STATE_MOVE_FORWARD);
+        set_state(STATE_AVOID_OBJECT_MOVE_FORWARD);
     }
 
     if (state == STATE_AVOID_OBJECT_TURN_RIGHT_FIRST && time_passed > 1000) {
@@ -349,26 +350,27 @@ void webserver_init() {
         server.send(200, "text/html", src_website_html, src_website_html_len);
     });
 
+    // The api endpoint to get the state
+    server.on("/api/get_state", []() {
+        // Return a simple json response
+        String auto_control_reponse = auto_control ? "true" : "false";
+        server.send(200, "application/json", "{\"auto_control\":" + auto_control_reponse + ",\"state\":" + state + "}");
+    });
+
     // The api endpoint to update the state
     server.on("/api/update_state", []() {
-        String new_state = server.arg("state");
+        // Update the auto control by the auto control GET variable
+        String new_auto_control = server.arg("auto_control");
+        if (new_auto_control == "true") {
+            auto_control = true;
+        }
+        if (new_auto_control == "false") {
+            auto_control = false;
+        }
 
-        // Update the state by the GET variable
-        if (new_state == "forward") {
-            set_state(STATE_OVERIDE_MOVE_FORWARD);
-        }
-        if (new_state == "left") {
-            set_state(STATE_OVERIDE_TURN_LEFT);
-        }
-        if (new_state == "right") {
-            set_state(STATE_OVERIDE_TURN_RIGHT);
-        }
-        if (new_state == "backward") {
-            set_state(STATE_OVERIDE_MOVE_BACKWARD);
-        }
-        if (new_state == "stop") {
-            set_state(STATE_STILL);
-        }
+        // Update the state by the state GET variable
+        String new_state = server.arg("state");
+        set_state(atoi(new_state.c_str()));
 
         // Return a simple json message for completeness
         server.send(200, "application/json", "{\"message\":\"succesfull\"}");
@@ -392,10 +394,6 @@ void setup() {
     motor_init();
     wifi_connect();
     webserver_init();
-
-    // Start the motor with driving
-    last_border_position = BORDER_UNKOWN;
-    set_state(STATE_MOVE_FORWARD);
 }
 
 // The program loop
@@ -406,6 +404,8 @@ void loop() {
     // Get new data from the slave
     update_data_from_slave();
 
-    // Update the state with the data
-    update_state();
+    // Update the state with the data when auto control is on
+    if (auto_control) {
+        update_state();
+    }
 }
