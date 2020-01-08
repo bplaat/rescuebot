@@ -12,17 +12,17 @@
 </head>
 <body>
     <div class="controls-container">
-        <button onmousedown="updateMotorState('left')" onmouseup="updateMotorState('stop')">&larr; Left</button>
+        <button onmousedown="updateState('left')" onmouseup="updateState('stop')">&larr; Left</button>
         <div class="single-container">
-            <button onmousedown="updateMotorState('forward')" onmouseup="updateMotorState('stop')">&uarr; Forward</button>
-            <button onmousedown="updateMotorState('backward')" onmouseup="updateMotorState('stop')">&darr; Backward</button>
+            <button onmousedown="updateState('forward')" onmouseup="updateState('stop')">&uarr; Forward</button>
+            <button onmousedown="updateState('backward')" onmouseup="updateState('stop')">&darr; Backward</button>
         </div>
-        <button onmousedown="updateMotorState('right')" onmouseup="updateMotorState('stop')">Right &rarr;</button>
+        <button onmousedown="updateState('right')" onmouseup="updateState('stop')">Right &rarr;</button>
     </div>
     <script>
-        function updateMotorState (motor_state) {
+        function updateState (state) {
             var xhr = new XMLHttpRequest();
-            xhr.open('GET', '/api/update_motor_state?motor_state=' + encodeURIComponent(motor_state), true);
+            xhr.open('GET', '/api/update_state?state=' + encodeURIComponent(state), true);
             xhr.send();
         }
     </script>

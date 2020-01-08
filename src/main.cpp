@@ -5,8 +5,42 @@
 #include "config.hpp"
 #include "website.hpp"
 
+void wifi_connect() {
+    Serial.print("\nConnecting to ");
+    Serial.print(wifi_ssid);
+    Serial.println("...");
+    WiFi.begin(wifi_ssid, wifi_password);
+    while (WiFi.status() != WL_CONNECTED) {
+        Serial.print(".");
+        delay(500);
+    }
+    Serial.println("\nConnected");
+
+    Serial.print("IP address: ");
+    Serial.println(WiFi.localIP());
+}
+
 #define I2C_ADDRESS 10
 #define PROTOCOL_REQUEST_MESSAGE_LENGTH 4
+
+uint8_t distance_to_ground;
+uint8_t distance_to_object;
+uint8_t ir_left;
+uint8_t ir_right;
+
+void update_data_from_slave() {
+    if (Wire.requestFrom(I2C_ADDRESS, PROTOCOL_REQUEST_MESSAGE_LENGTH) == PROTOCOL_REQUEST_MESSAGE_LENGTH) {
+        distance_to_ground = Wire.read();
+        distance_to_object = Wire.read();
+        ir_left = Wire.read();
+        ir_right = Wire.read();
+    }
+}
+
+void i2c_init() {
+    Wire.begin();
+    update_data_from_slave();
+}
 
 #define MOTOR_LEFT_FORWARD_PIN D0
 #define MOTOR_LEFT_BACKWARD_PIN D1
@@ -16,11 +50,15 @@
 #define MOTOR_RIGHT_BACKWARD_PIN D4
 #define MOTOR_RIGHT_ENABLE_PIN D5
 
-uint8_t distance_to_ground;
-uint8_t distance_to_object;
-uint8_t ir_left;
-uint8_t ir_right;
+void motor_init() {
+    pinMode(MOTOR_LEFT_FORWARD_PIN, OUTPUT);
+    pinMode(MOTOR_LEFT_BACKWARD_PIN, OUTPUT);
+    pinMode(MOTOR_LEFT_ENABLE_PIN, OUTPUT);
 
+    pinMode(MOTOR_RIGHT_FORWARD_PIN, OUTPUT);
+    pinMode(MOTOR_RIGHT_BACKWARD_PIN, OUTPUT);
+    pinMode(MOTOR_RIGHT_ENABLE_PIN, OUTPUT);
+}
 
 void motor_move_forward() {
     digitalWrite(MOTOR_LEFT_FORWARD_PIN, HIGH);
@@ -44,8 +82,8 @@ void motor_move_backward() {
 
 void motor_turn_left() {
     digitalWrite(MOTOR_LEFT_FORWARD_PIN, LOW);
-    digitalWrite(MOTOR_LEFT_BACKWARD_PIN, LOW);
-    digitalWrite(MOTOR_LEFT_ENABLE_PIN, LOW);
+    digitalWrite(MOTOR_LEFT_BACKWARD_PIN, HIGH);
+    digitalWrite(MOTOR_LEFT_ENABLE_PIN, HIGH);
 
     digitalWrite(MOTOR_RIGHT_FORWARD_PIN, HIGH);
     digitalWrite(MOTOR_RIGHT_BACKWARD_PIN, LOW);
@@ -58,8 +96,8 @@ void motor_turn_right() {
     digitalWrite(MOTOR_LEFT_ENABLE_PIN, HIGH);
 
     digitalWrite(MOTOR_RIGHT_FORWARD_PIN, LOW);
-    digitalWrite(MOTOR_RIGHT_BACKWARD_PIN, LOW);
-    digitalWrite(MOTOR_RIGHT_ENABLE_PIN, LOW);
+    digitalWrite(MOTOR_RIGHT_BACKWARD_PIN, HIGH);
+    digitalWrite(MOTOR_RIGHT_ENABLE_PIN, HIGH);
 }
 
 void motor_stop() {
@@ -72,54 +110,225 @@ void motor_stop() {
     digitalWrite(MOTOR_RIGHT_ENABLE_PIN, LOW);
 }
 
+#define BORDER_UNKOWN 0
+#define BORDER_LEFT 1
+#define BORDER_RIGHT 2
+
+uint8_t last_border_position;
+
+#define STATE_STILL 0
+#define STATE_MOVE_FORWARD 1
+
+#define STATE_AVOID_LEFT_BORDER 2
+#define STATE_AVOID_RIGHT_BORDER 3
+
+#define STATE_AVOID_OBJECT_MOVE_BACKWARD 4
+#define STATE_AVOID_OBJECT_TURN_LEFT_FIRST 5
+#define STATE_AVOID_OBJECT_TURN_RIGHT_FIRST 6
+#define STATE_AVOID_OBJECT_MOVE_FORWARD 7
+#define STATE_AVOID_OBJECT_TURN_LEFT_SECOND 8
+#define STATE_AVOID_OBJECT_TURN_RIGHT_SECOND 9
+
+#define STATE_AVOID_CLIFF_MOVE_BACKWARD 10
+#define STATE_AVOID_CLIFF_TURN_LEFT 11
+#define STATE_AVOID_CLIFF_TURN_RIGHT 12
+
+#define STATE_OVERIDE_MOVE_FORWARD 13
+#define STATE_OVERIDE_TURN_LEFT 14
+#define STATE_OVERIDE_TURN_RIGHT 15
+#define STATE_OVERIDE_MOVE_BACKWARD 16
+
+uint8_t state;
+uint32_t state_time;
+
+void set_state(uint8_t new_state) {
+    state = new_state;
+    state_time = millis();
+
+    // Standard states
+    if (state == STATE_STILL) {
+        motor_stop();
+    }
+
+    if (state == STATE_MOVE_FORWARD) {
+        motor_move_forward();
+    }
+
+    // Avoid left border
+    if (state == STATE_AVOID_LEFT_BORDER) {
+        last_border_position = BORDER_LEFT;
+        motor_turn_right();
+    }
+
+    // Avoid right border
+    if (state == STATE_AVOID_RIGHT_BORDER) {
+        last_border_position = BORDER_RIGHT;
+        motor_turn_left();
+    }
+
+    // Avoid objects
+    if (state == STATE_AVOID_OBJECT_MOVE_BACKWARD) {
+        motor_move_backward();
+    }
+
+    if (state == STATE_AVOID_OBJECT_TURN_LEFT_FIRST) {
+        motor_turn_left();
+    }
+
+    if (state == STATE_AVOID_OBJECT_TURN_RIGHT_FIRST) {
+        motor_turn_right();
+    }
+
+    if (state == STATE_AVOID_OBJECT_MOVE_FORWARD) {
+        motor_move_forward();
+    }
+
+    if (state == STATE_AVOID_OBJECT_TURN_LEFT_SECOND) {
+        motor_turn_left();
+    }
+
+    if (state == STATE_AVOID_OBJECT_TURN_RIGHT_SECOND) {
+        motor_turn_right();
+    }
+
+    // Avoid cliffs
+    if (state == STATE_AVOID_CLIFF_MOVE_BACKWARD) {
+        motor_move_backward();
+    }
+
+    if (state == STATE_AVOID_CLIFF_TURN_LEFT) {
+        motor_turn_left();
+    }
+
+    if (state == STATE_AVOID_CLIFF_TURN_RIGHT) {
+        motor_turn_right();
+    }
+
+    // Overide motor
+    if (state == STATE_OVERIDE_MOVE_FORWARD) {
+        motor_move_forward();
+    }
+
+    if (state == STATE_OVERIDE_TURN_LEFT) {
+        motor_turn_left();
+    }
+
+    if (state == STATE_OVERIDE_TURN_RIGHT) {
+        motor_turn_right();
+    }
+
+    if (state == STATE_OVERIDE_MOVE_BACKWARD) {
+        motor_move_backward();
+    }
+}
+
+void update_state() {
+    uint32_t time_passed = millis() - state_time;
+
+    // Avoid left border
+    if (ir_left == LOW) {
+        set_state(STATE_AVOID_LEFT_BORDER);
+    }
+
+    if (state == STATE_AVOID_LEFT_BORDER && ir_left == HIGH) {
+        set_state(STATE_MOVE_FORWARD);
+    }
+
+    // Avoid right border
+    if (ir_right == LOW) {
+        set_state(STATE_AVOID_RIGHT_BORDER);
+    }
+
+    if (state == STATE_AVOID_RIGHT_BORDER && ir_right == HIGH) {
+        set_state(STATE_MOVE_FORWARD);
+    }
+
+    // Avoid objects
+    if (distance_to_object < 25) {
+        set_state(STATE_AVOID_OBJECT_MOVE_BACKWARD);
+    }
+
+    if (state == STATE_AVOID_OBJECT_MOVE_BACKWARD && time_passed > 1000) {
+        if (last_border_position == BORDER_LEFT) {
+            set_state(STATE_AVOID_OBJECT_TURN_RIGHT_FIRST);
+        }
+        if (last_border_position == BORDER_RIGHT) {
+            set_state(STATE_AVOID_OBJECT_TURN_LEFT_FIRST);
+        }
+    }
+
+    if (state == STATE_AVOID_OBJECT_TURN_LEFT_FIRST && time_passed > 1000) {
+        set_state(STATE_MOVE_FORWARD);
+    }
+
+    if (state == STATE_AVOID_OBJECT_TURN_RIGHT_FIRST && time_passed > 1000) {
+        set_state(STATE_AVOID_OBJECT_MOVE_FORWARD);
+    }
+
+    if (state == STATE_AVOID_OBJECT_MOVE_FORWARD && time_passed > 1000) {
+        if (last_border_position == BORDER_LEFT) {
+            set_state(STATE_AVOID_OBJECT_TURN_LEFT_SECOND);
+        }
+        if (last_border_position == BORDER_RIGHT) {
+            set_state(STATE_AVOID_OBJECT_TURN_RIGHT_SECOND);
+        }
+    }
+
+    if (state == STATE_AVOID_OBJECT_TURN_LEFT_SECOND && time_passed > 1000) {
+        set_state(STATE_MOVE_FORWARD);
+    }
+
+    if (state == STATE_AVOID_OBJECT_TURN_RIGHT_SECOND && time_passed > 1000) {
+        set_state(STATE_MOVE_FORWARD);
+    }
+
+    // Avoid cliffs
+    if (distance_to_ground > 2) {
+        set_state(STATE_AVOID_CLIFF_MOVE_BACKWARD);
+    }
+
+    if (state == STATE_AVOID_CLIFF_MOVE_BACKWARD && time_passed > 1000) {
+        if (last_border_position == BORDER_LEFT) {
+            set_state(STATE_AVOID_CLIFF_TURN_RIGHT);
+        }
+        if (last_border_position == BORDER_RIGHT) {
+            set_state(STATE_AVOID_CLIFF_TURN_RIGHT);
+        }
+    }
+
+    if (state == STATE_AVOID_CLIFF_TURN_LEFT && time_passed > 1000) {
+        set_state(STATE_MOVE_FORWARD);
+    }
+
+    if (state == STATE_AVOID_CLIFF_TURN_RIGHT && time_passed > 1000) {
+        set_state(STATE_MOVE_FORWARD);
+    }
+}
+
 ESP8266WebServer server(80);
 
-void setup() {
-    Serial.begin(115200);
-    Wire.begin();
-
-    pinMode(MOTOR_LEFT_FORWARD_PIN, OUTPUT);
-    pinMode(MOTOR_LEFT_BACKWARD_PIN, OUTPUT);
-    pinMode(MOTOR_LEFT_ENABLE_PIN, OUTPUT);
-
-    pinMode(MOTOR_RIGHT_FORWARD_PIN, OUTPUT);
-    pinMode(MOTOR_RIGHT_BACKWARD_PIN, OUTPUT);
-    pinMode(MOTOR_RIGHT_ENABLE_PIN, OUTPUT);
-
-    Serial.print("\nConnecting to ");
-    Serial.print(wifi_ssid);
-    Serial.println("...");
-    WiFi.begin(wifi_ssid, wifi_password);
-    while (WiFi.status() != WL_CONNECTED) {
-        Serial.print(".");
-        delay(500);
-    }
-    Serial.println("\nConnected");
-
-    Serial.print("IP address: ");
-    Serial.println(WiFi.localIP());
-
+void webserver_init() {
     server.on("/", []() {
         server.send(200, "text/html", website_html, website_html_len);
     });
 
-    server.on("/api/update_motor_state", []() {
-        String motor_state = server.arg("motor_state");
+    server.on("/api/update_state", []() {
+        String new_state = server.arg("state");
 
-        if (motor_state == "forward") {
-            motor_move_forward();
+        if (new_state == "forward") {
+            set_state(STATE_OVERIDE_MOVE_FORWARD);
         }
-        if (motor_state == "left") {
-            motor_turn_left();
+        if (new_state == "left") {
+            set_state(STATE_OVERIDE_TURN_LEFT);
         }
-        if (motor_state == "right") {
-            motor_turn_right();
+        if (new_state == "right") {
+            set_state(STATE_OVERIDE_TURN_RIGHT);
         }
-        if (motor_state == "backward") {
-            motor_move_backward();
+        if (new_state == "backward") {
+            set_state(STATE_OVERIDE_MOVE_BACKWARD);
         }
-        if (motor_state == "stop") {
-            motor_stop();
+        if (new_state == "stop") {
+            set_state(STATE_STILL);
         }
 
         server.send(200, "application/json", "{\"message\":\"succesfull\"}");
@@ -128,12 +337,34 @@ void setup() {
     server.begin();
 }
 
+// #############################################################################
+// ######################## ARDUINO LIBRARY SETUP & LOOP #######################
+// #############################################################################
+
+// The start of our program
+void setup() {
+    // Init the serial output
+    Serial.begin(115200);
+
+    // Init all the things
+    i2c_init();
+    motor_init();
+    wifi_connect();
+    webserver_init();
+
+    // Start the motor with driving
+    last_border_position = BORDER_UNKOWN;
+    set_state(STATE_MOVE_FORWARD);
+}
+
+// The program loop
 void loop() {
+    // Handle any http clients
     server.handleClient();
-    if (Wire.requestFrom(I2C_ADDRESS, PROTOCOL_REQUEST_MESSAGE_LENGTH) == PROTOCOL_REQUEST_MESSAGE_LENGTH) {
-        distance_to_ground = Wire.read();
-        distance_to_object = Wire.read();
-        ir_left = Wire.read();
-        ir_right = Wire.read();
-    }
+
+    // Get new data from the slave
+    update_data_from_slave();
+
+    // Update the state with the data
+    update_state();
 }
