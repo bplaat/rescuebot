@@ -16,6 +16,7 @@ uint8_t irPinRight;
 #define MAGNET_PIN 7
 #define SERVO_PIN 9
 #define I2C_ADDRESS 10
+#define SERIAL
 
 int16_t duration = 0;
 
@@ -31,7 +32,9 @@ void sendValues()
 
 void setup()
 {
+#ifdef SERIAL
   Serial.begin(115200);
+#endif
   Wire.begin(I2C_ADDRESS);
   Wire.onRequest(sendValues);
   myservo.attach(SERVO_PIN);
@@ -72,20 +75,25 @@ long getPulsDuration(int echoPin)
 void readSensors()
 {
   long durationLow = getPulsDuration(ECHO_PIN_LOW);
+#ifdef SERIAL
   Serial.print("duration SensorLow: ");
   Serial.println(duration);
+#endif
   distanceLow = duration / FACTOR;
 
   long durationHigh = getPulsDuration(ECHO_PIN_HIGH);
+#ifdef SERIAL
   Serial.print("duration SensorLow: ");
   Serial.println(duration);
+#endif
   distanceHigh = duration / FACTOR;
 
-  Serial.print("duration IRSensorLeft: ");
   irPinLeft = digitalRead(IR_PIN_LEFT);
+#ifdef SERIAL
   Serial.println(irPinLeft);
-
-  Serial.print("duration IRSensorRight: ");
+#endif
   irPinRight = digitalRead(IR_PIN_RIGHT);
+#ifdef SERIAL
   Serial.println(irPinRight);
+#endif
 }
