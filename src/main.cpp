@@ -1,3 +1,4 @@
+// Include the libraries, the config and the website headers
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
@@ -5,21 +6,11 @@
 #include "config.hpp"
 #include "website.hpp"
 
-void wifi_connect() {
-    Serial.print("\nConnecting to ");
-    Serial.print(wifi_ssid);
-    Serial.println("...");
-    WiFi.begin(wifi_ssid, wifi_password);
-    while (WiFi.status() != WL_CONNECTED) {
-        Serial.print(".");
-        delay(500);
-    }
-    Serial.println("\nConnected");
+// #############################################################################
+// ############################# I2C COMMUNICATION #############################
+// #############################################################################
 
-    Serial.print("IP address: ");
-    Serial.println(WiFi.localIP());
-}
-
+// The i2c variables
 #define I2C_ADDRESS 10
 #define PROTOCOL_REQUEST_MESSAGE_LENGTH 4
 
@@ -28,6 +19,7 @@ uint8_t distance_to_object;
 uint8_t ir_left;
 uint8_t ir_right;
 
+// A function that request the data and updates some variables
 void update_data_from_slave() {
     if (Wire.requestFrom(I2C_ADDRESS, PROTOCOL_REQUEST_MESSAGE_LENGTH) == PROTOCOL_REQUEST_MESSAGE_LENGTH) {
         distance_to_ground = Wire.read();
@@ -37,11 +29,17 @@ void update_data_from_slave() {
     }
 }
 
+// A function that ints the i2c and gets the data
 void i2c_init() {
     Wire.begin();
     update_data_from_slave();
 }
 
+// #############################################################################
+// #################################### STATE ##################################
+// #############################################################################
+
+// The motor pins
 #define MOTOR_LEFT_FORWARD_PIN D0
 #define MOTOR_LEFT_BACKWARD_PIN D1
 #define MOTOR_LEFT_ENABLE_PIN D2
@@ -50,6 +48,7 @@ void i2c_init() {
 #define MOTOR_RIGHT_BACKWARD_PIN D4
 #define MOTOR_RIGHT_ENABLE_PIN D5
 
+// Inits the motor pins
 void motor_init() {
     pinMode(MOTOR_LEFT_FORWARD_PIN, OUTPUT);
     pinMode(MOTOR_LEFT_BACKWARD_PIN, OUTPUT);
@@ -60,6 +59,7 @@ void motor_init() {
     pinMode(MOTOR_RIGHT_ENABLE_PIN, OUTPUT);
 }
 
+// Moves the car forward
 void motor_move_forward() {
     digitalWrite(MOTOR_LEFT_FORWARD_PIN, HIGH);
     digitalWrite(MOTOR_LEFT_BACKWARD_PIN, LOW);
@@ -70,16 +70,7 @@ void motor_move_forward() {
     digitalWrite(MOTOR_RIGHT_ENABLE_PIN, HIGH);
 }
 
-void motor_move_backward() {
-    digitalWrite(MOTOR_LEFT_FORWARD_PIN, LOW);
-    digitalWrite(MOTOR_LEFT_BACKWARD_PIN, HIGH);
-    digitalWrite(MOTOR_LEFT_ENABLE_PIN, HIGH);
-
-    digitalWrite(MOTOR_RIGHT_FORWARD_PIN, LOW);
-    digitalWrite(MOTOR_RIGHT_BACKWARD_PIN, HIGH);
-    digitalWrite(MOTOR_RIGHT_ENABLE_PIN, HIGH);
-}
-
+// Turns the car to the left
 void motor_turn_left() {
     digitalWrite(MOTOR_LEFT_FORWARD_PIN, LOW);
     digitalWrite(MOTOR_LEFT_BACKWARD_PIN, HIGH);
@@ -90,6 +81,7 @@ void motor_turn_left() {
     digitalWrite(MOTOR_RIGHT_ENABLE_PIN, HIGH);
 }
 
+// Turns the cars to the right
 void motor_turn_right() {
     digitalWrite(MOTOR_LEFT_FORWARD_PIN, HIGH);
     digitalWrite(MOTOR_LEFT_BACKWARD_PIN, LOW);
@@ -100,6 +92,18 @@ void motor_turn_right() {
     digitalWrite(MOTOR_RIGHT_ENABLE_PIN, HIGH);
 }
 
+// Moves the car backwards
+void motor_move_backward() {
+    digitalWrite(MOTOR_LEFT_FORWARD_PIN, LOW);
+    digitalWrite(MOTOR_LEFT_BACKWARD_PIN, HIGH);
+    digitalWrite(MOTOR_LEFT_ENABLE_PIN, HIGH);
+
+    digitalWrite(MOTOR_RIGHT_FORWARD_PIN, LOW);
+    digitalWrite(MOTOR_RIGHT_BACKWARD_PIN, HIGH);
+    digitalWrite(MOTOR_RIGHT_ENABLE_PIN, HIGH);
+}
+
+// Stops all motors
 void motor_stop() {
     digitalWrite(MOTOR_LEFT_FORWARD_PIN, LOW);
     digitalWrite(MOTOR_LEFT_BACKWARD_PIN, LOW);
@@ -110,12 +114,18 @@ void motor_stop() {
     digitalWrite(MOTOR_RIGHT_ENABLE_PIN, LOW);
 }
 
+// #############################################################################
+// #################################### STATE ##################################
+// #############################################################################
+
+// Variables to hold the last border position
 #define BORDER_UNKOWN 0
 #define BORDER_LEFT 1
 #define BORDER_RIGHT 2
 
 uint8_t last_border_position;
 
+// The different states
 #define STATE_STILL 0
 #define STATE_MOVE_FORWARD 1
 
@@ -138,9 +148,11 @@ uint8_t last_border_position;
 #define STATE_OVERIDE_TURN_RIGHT 15
 #define STATE_OVERIDE_MOVE_BACKWARD 16
 
+// The state variables
 uint8_t state;
 uint32_t state_time;
 
+// A function that sets the state and reflects it to the motors
 void set_state(uint8_t new_state) {
     state = new_state;
     state_time = millis();
@@ -222,6 +234,7 @@ void set_state(uint8_t new_state) {
     }
 }
 
+// A function that updates the state with the data
 void update_state() {
     uint32_t time_passed = millis() - state_time;
 
@@ -305,16 +318,42 @@ void update_state() {
     }
 }
 
+// #############################################################################
+// ############################# WIFI / WEB SERVER #############################
+// #############################################################################
+
+// A function that connects to wifi via the config settings
+void wifi_connect() {
+    Serial.print("\nConnecting to ");
+    Serial.print(wifi_ssid);
+    Serial.println("...");
+
+    WiFi.begin(wifi_ssid, wifi_password);
+    while (WiFi.status() != WL_CONNECTED) {
+        Serial.print(".");
+        delay(500);
+    }
+    Serial.println("\nConnected");
+
+    Serial.print("IP address: ");
+    Serial.println(WiFi.localIP());
+}
+
+// The web server object
 ESP8266WebServer server(80);
 
+// A function that inits the webs server
 void webserver_init() {
+    // Return the web interface when you go to the root path
     server.on("/", []() {
-        server.send(200, "text/html", website_html, website_html_len);
+        server.send(200, "text/html", src_website_html, src_website_html_len);
     });
 
+    // The api endpoint to update the state
     server.on("/api/update_state", []() {
         String new_state = server.arg("state");
 
+        // Update the state by the GET variable
         if (new_state == "forward") {
             set_state(STATE_OVERIDE_MOVE_FORWARD);
         }
@@ -331,9 +370,11 @@ void webserver_init() {
             set_state(STATE_STILL);
         }
 
+        // Return a simple json message for completeness
         server.send(200, "application/json", "{\"message\":\"succesfull\"}");
     });
 
+    // Begin the web server
     server.begin();
 }
 
