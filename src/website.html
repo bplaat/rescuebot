@@ -19,6 +19,7 @@
         <div class="flex-horizontal flex-vertical-center">
             <div class="logo">RescueBot</div>
             <div id="state_text" class="data flex">Loading...</div>
+            <div id="last_border_position_text" class="data flex">Loading...</div>
             <button id="auto-control-button" class="flex auto-control-button-off">Auto control off</button>
         </div>
         <div class="flex flex-horizontal">
@@ -31,11 +32,23 @@
         </div>
     </div>
     <script>
+        var BORDER_UNKOWN = 0;
+
+        var border_strings = [
+            'Border position unkown',
+            'Border position left',
+            'Border position right'
+        ];
+
+        var last_border_position = BORDER_UNKOWN;
+
         var STATE_STILL = 0;
         var STATE_OVERIDE_MOVE_FORWARD = 13;
         var STATE_OVERIDE_TURN_LEFT = 14;
         var STATE_OVERIDE_TURN_RIGHT = 15;
         var STATE_OVERIDE_MOVE_BACKWARD = 16;
+
+        var state = STATE_STILL;
 
         var state_strings = [
             '- Still',
@@ -61,14 +74,36 @@
             '\u2193 Overide moving backward'
         ];
 
+        var auto_control = false;
+
         var auto_control_button = document.getElementById('auto-control-button');
         var move_forward_button = document.getElementById('move-forward-button');
         var turn_left_button = document.getElementById('turn-left-button');
         var turn_right_button = document.getElementById('turn-right-button');
         var move_backward_button = document.getElementById('move-backward-button');
 
-        var auto_control = false;
-        var state = STATE_STILL;
+        function update_auto_control (new_auto_control) {
+            auto_control = new_auto_control;
+            if (auto_control) {
+                auto_control_button.classList.add('auto-control-button-on');
+                auto_control_button.classList.remove('auto-control-button-off');
+                auto_control_button.textContent = 'Auto control on';
+
+                move_forward_button.disabled = true;
+                turn_left_button.disabled = true;
+                turn_right_button.disabled = true;
+                move_backward_button.disabled = true;
+            } else {
+                auto_control_button.classList.add('auto-control-button-off');
+                auto_control_button.classList.remove('auto-control-button-on');
+                auto_control_button.textContent = 'Auto control off';
+
+                move_forward_button.disabled = false;
+                turn_left_button.disabled = false;
+                turn_right_button.disabled = false;
+                move_backward_button.disabled = false;
+            }
+        }
 
         function update_state () {
             var xhr = new XMLHttpRequest();
@@ -80,10 +115,20 @@
             var xhr = new XMLHttpRequest();
             xhr.onload = function () {
                 var data = JSON.parse(xhr.responseText);
-                auto_control = data.auto_control;
-                state = data.state;
 
-                state_text.textContent = state_strings[state];
+                if (data.last_border_position == last_border_position) {
+                    last_border_position = data.last_border_position;
+                    last_border_position.textContent = border_strings[last_border_position];
+                }
+
+                if (data.state != state) {
+                    state = data.state;
+                    state_text.textContent = state_strings[state];
+                }
+
+                if (data.auto_control != auto_control) {
+                    update_auto_control(data.auto_control);
+                }
 
                 setTimeout(getState, 500);
             };
@@ -92,28 +137,7 @@
         }
 
         auto_control_button.addEventListener('click', function () {
-            if (!auto_control) {
-                auto_control = true;
-                auto_control_button.classList.add('auto-control-button-on');
-                auto_control_button.classList.remove('auto-control-button-off');
-                auto_control_button.textContent = 'Auto control on';
-
-                move_forward_button.disabled = true;
-                turn_left_button.disabled = true;
-                turn_right_button.disabled = true;
-                move_backward_button.disabled = true;
-            } else {
-                auto_control = false;
-                auto_control_button.classList.add('auto-control-button-off');
-                auto_control_button.classList.remove('auto-control-button-on');
-                auto_control_button.textContent = 'Auto control off';
-
-                move_forward_button.disabled = false;
-                turn_left_button.disabled = false;
-                turn_right_button.disabled = false;
-                move_backward_button.disabled = false;
-            }
-
+            update_auto_control(!auto_control);
             update_state();
         }, false);
 

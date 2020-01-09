@@ -354,7 +354,7 @@ void webserver_init() {
     server.on("/api/get_state", []() {
         // Return a simple json response
         String auto_control_reponse = auto_control ? "true" : "false";
-        server.send(200, "application/json", "{\"auto_control\":" + auto_control_reponse + ",\"state\":" + state + "}");
+        server.send(200, "application/json", "{\"last_border_position\":" + String(last_border_position) + ",\"auto_control\":" + auto_control_reponse + ",\"state\":" + String(state) + "}");
     });
 
     // The api endpoint to update the state
