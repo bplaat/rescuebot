@@ -334,8 +334,11 @@ void wifi_connect() {
         Serial.print(".");
         delay(500);
     }
-    Serial.println("\nConnected");
+    Serial.println();
 
+    Serial.print("RescueBot ");
+    Serial.print(rescuebot_name);
+    Serial.println(" connected!");
     Serial.print("IP address: ");
     Serial.println(WiFi.localIP());
 }
@@ -354,23 +357,19 @@ void webserver_init() {
     server.on("/api/get_state", []() {
         // Return a simple json response
         String auto_control_reponse = auto_control ? "true" : "false";
-        server.send(200, "application/json", "{\"last_border_position\":" + String(last_border_position) + ",\"auto_control\":" + auto_control_reponse + ",\"state\":" + String(state) + "}");
+        server.send(200, "application/json", "{\"rescuebot_name\":\"" + rescuebot_name + "\"," +
+            "\"last_border_position\":" + String(last_border_position) + "," +
+            "\"auto_control\":" + auto_control_reponse + "," +
+            "\"state\":" + String(state) + "}");
     });
 
     // The api endpoint to update the state
     server.on("/api/update_state", []() {
         // Update the auto control by the auto control GET variable
-        String new_auto_control = server.arg("auto_control");
-        if (new_auto_control == "true") {
-            auto_control = true;
-        }
-        if (new_auto_control == "false") {
-            auto_control = false;
-        }
+        auto_control = server.arg("auto_control") == "true" ? true : false;
 
         // Update the state by the state GET variable
-        String new_state = server.arg("state");
-        set_state(atoi(new_state.c_str()));
+        set_state(atoi(server.arg("state").c_str()));
 
         // Return a simple json message for completeness
         server.send(200, "application/json", "{\"message\":\"succesfull\"}");

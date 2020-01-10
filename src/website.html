@@ -12,15 +12,20 @@
         .data{color:#444;font-family:'Courier New',Courier,monospace;text-align:center;line-height:64px;}
         .auto-control-button-on{color:#fff;background-color:#6b6}
         .auto-control-button-off{color:#fff;background-color:#e22}
+        @media (max-width: 640px) {
+            .mobile-flex-vertical{flex-direction:column}
+            .data{text-align:left;line-height:1.5}
+            .logo,.data,.auto-control-button{padding:8px}
+        }
     </style>
 </head>
 <body>
     <div class="root flex-vertical">
-        <div class="flex-horizontal flex-vertical-center">
-            <div class="logo">RescueBot</div>
-            <div id="state_text" class="data flex">Loading...</div>
-            <div id="last_border_position_text" class="data flex">Loading...</div>
-            <button id="auto-control-button" class="flex auto-control-button-off">Auto control off</button>
+        <div class="flex-horizontal mobile-flex-vertical">
+            <div class="logo">RescueBot <span id="rescuebot-name-label"></span></div>
+            <div id="state-label" class="data flex">Loading...</div>
+            <div id="last-border-position-label" class="data flex">Loading...</div>
+            <button id="auto-control-button" class="flex auto-control-button auto-control-button-off">Auto control off</button>
         </div>
         <div class="flex flex-horizontal">
             <button id="turn-left-button" class="flex">&larr; Left</button>
@@ -32,6 +37,8 @@
         </div>
     </div>
     <script>
+        var rescuebot_name = '';
+
         var BORDER_UNKOWN = 0;
 
         var border_strings = [
@@ -43,6 +50,8 @@
         var last_border_position = BORDER_UNKOWN;
 
         var STATE_STILL = 0;
+        var STATE_MOVE_FORWARD = 1;
+
         var STATE_OVERIDE_MOVE_FORWARD = 13;
         var STATE_OVERIDE_TURN_LEFT = 14;
         var STATE_OVERIDE_TURN_RIGHT = 15;
@@ -75,6 +84,10 @@
         ];
 
         var auto_control = false;
+
+        var rescuebot_name_label = document.getElementById('rescuebot-name-label');
+        var state_label = document.getElementById('state-text-label');
+        var last_border_position_label = document.getElementById('last-border-position-label');
 
         var auto_control_button = document.getElementById('auto-control-button');
         var move_forward_button = document.getElementById('move-forward-button');
@@ -116,21 +129,26 @@
             xhr.onload = function () {
                 var data = JSON.parse(xhr.responseText);
 
-                if (data.last_border_position == last_border_position) {
-                    last_border_position = data.last_border_position;
-                    last_border_position.textContent = border_strings[last_border_position];
+                if (data.rescuebot_name != rescuebot_name) {
+                    rescuebot_name = data.rescuebot_name;
+                    rescuebot_name_label.textContent = rescuebot_name;
                 }
 
-                if (data.state != state) {
-                    state = data.state;
-                    state_text.textContent = state_strings[state];
+                if (data.last_border_position != last_border_position) {
+                    last_border_position = data.last_border_position;
+                    last_border_position_label.textContent = border_strings[last_border_position];
                 }
 
                 if (data.auto_control != auto_control) {
                     update_auto_control(data.auto_control);
                 }
 
-                setTimeout(getState, 500);
+                if (data.state != state) {
+                    state = data.state;
+                    state_label.textContent = state_strings[state];
+                }
+
+                setTimeout(getState, 250);
             };
             xhr.open('GET', '/api/get_state', true);
             xhr.send();
@@ -138,18 +156,17 @@
 
         auto_control_button.addEventListener('click', function () {
             update_auto_control(!auto_control);
+            state = auto_control ? STATE_MOVE_FORWARD : STATE_STILL;
             update_state();
         }, false);
 
         function stop_motor () {
             state = STATE_STILL;
-            state_text.textContent = state_strings[state];
             update_state();
         }
 
         move_forward_button.addEventListener('mousedown', function () {
             state = STATE_OVERIDE_MOVE_FORWARD;
-            state_text.textContent = state_strings[state];
             update_state();
         }, false);
 
@@ -157,7 +174,6 @@
 
         turn_left_button.addEventListener('mousedown', function () {
             state = STATE_OVERIDE_TURN_LEFT;
-            state_text.textContent = state_strings[state];
             update_state();
         }, false);
 
@@ -165,7 +181,6 @@
 
         turn_right_button.addEventListener('mousedown', function () {
             state = STATE_OVERIDE_TURN_RIGHT;
-            state_text.textContent = state_strings[state];
             update_state();
         }, false);
 
@@ -173,7 +188,6 @@
 
         move_backward_button.addEventListener('mousedown', function () {
             state = STATE_OVERIDE_MOVE_BACKWARD;
-            state_text.textContent = state_strings[state];
             update_state();
         }, false);
 
