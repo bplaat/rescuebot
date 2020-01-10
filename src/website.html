@@ -23,8 +23,8 @@
     <div class="root flex-vertical">
         <div class="flex-horizontal mobile-flex-vertical">
             <div class="logo">RescueBot <span id="rescuebot-name-label"></span></div>
-            <div id="state-label" class="data flex">Loading...</div>
-            <div id="last-border-position-label" class="data flex">Loading...</div>
+            <div id="state-label" class="data flex">- Still</div>
+            <div id="last-border-position-label" class="data flex">Border position unkown</div>
             <button id="auto-control-button" class="flex auto-control-button auto-control-button-off">Auto control off</button>
         </div>
         <div class="flex flex-horizontal">
@@ -148,7 +148,7 @@
                     state_label.textContent = state_strings[state];
                 }
 
-                setTimeout(getState, 250);
+                setTimeout(update_state, 250);
             };
             xhr.open('GET', '/api/get_state', true);
             xhr.send();
