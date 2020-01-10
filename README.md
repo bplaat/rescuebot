@@ -1,7 +1,7 @@
 # RescueBot
 Technische Informatica - Project 2 (RescueBot) - Group 5
 
-## Slave to Master protecol
+## Slave to Master protocol
 Values to receive from nano:
 
 - `distance_to_ground` represents the distance to the ground in cm.
