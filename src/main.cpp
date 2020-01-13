@@ -13,6 +13,8 @@
 // The i2c variables
 #define I2C_ADDRESS 10
 #define PROTOCOL_REQUEST_MESSAGE_LENGTH 6
+#define PROTOCOL_BORDER_NOT_FOUND 0
+#define PROTOCOL_BORDER_FOUND 1
 
 uint8_t distance_to_object;
 uint8_t distance_to_left;
@@ -24,12 +26,12 @@ uint8_t ir_right;
 // A function that request the data and updates some variables
 void update_data_from_slave() {
     if (Wire.requestFrom(I2C_ADDRESS, PROTOCOL_REQUEST_MESSAGE_LENGTH) == PROTOCOL_REQUEST_MESSAGE_LENGTH) {
-        distance_to_ground = Wire.read();
         distance_to_object = Wire.read();
+        distance_to_left = Wire.read();
+        distance_to_right = Wire.read();
+        distance_to_ground = Wire.read();
         ir_left = Wire.read();
         ir_right = Wire.read();
-        distance_to_right = Wire.read();
-        distance_to_left = Wire.read();
     }
 }
 
@@ -152,6 +154,8 @@ uint8_t last_border_position = BORDER_UNKOWN;
 #define STATE_OVERIDE_TURN_RIGHT 15
 #define STATE_OVERIDE_MOVE_BACKWARD 16
 
+#define STATE_TUNNEL_FORWARD 17
+
 // The state variables
 bool auto_control = false;
 uint8_t state = STATE_STILL;
@@ -237,23 +241,35 @@ void set_state(uint8_t new_state) {
     if (state == STATE_OVERIDE_MOVE_BACKWARD) {
         motor_move_backward();
     }
+
+    // Tunnel protocol
+    if (state == STATE_TUNNEL_FORWARD) {
+        motor_move_forward();
+    }
 }
 
 // A function that updates the state with the data
 void update_state() {
     uint32_t time_passed = millis() - state_time;
 
+    // Tunnel protocol
+    if (distance_to_left < 20 && distance_to_right < 20) {
+        set_state(STATE_TUNNEL_FORWARD);
+        return;
+    }
+
     // Avoid left border
-    if (ir_left == LOW) {
+    if (ir_left == PROTOCOL_BORDER_FOUND) {
         set_state(STATE_AVOID_LEFT_BORDER);
     }
+
 
     if (state == STATE_AVOID_LEFT_BORDER && ir_left == HIGH) {
         set_state(STATE_MOVE_FORWARD);
     }
 
     // Avoid right border
-    if (ir_right == LOW) {
+    if (ir_right == PROTOCOL_BORDER_FOUND) {
         set_state(STATE_AVOID_RIGHT_BORDER);
     }
 
