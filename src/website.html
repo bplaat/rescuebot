@@ -148,7 +148,10 @@
                     state_label.textContent = state_strings[state];
                 }
 
-                setTimeout(update_state, 250);
+                setTimeout(load_state, 250);
+            };
+            xhr.onerror = function () {
+                setTimeout(load_state, 500);
             };
             xhr.open('GET', '/api/get_state', true);
             xhr.send();
