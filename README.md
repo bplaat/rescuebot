@@ -15,5 +15,7 @@ struct slave_to_master {
     uint8_t distance_to_object;
     uint8_t ir_left;
     uint8_t ir_right;
+    uint8_t distanceRight;
+    uint8_t distanceLeft;
 };
 ```
