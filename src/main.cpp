@@ -12,10 +12,12 @@
 
 // The i2c variables
 #define I2C_ADDRESS 10
-#define PROTOCOL_REQUEST_MESSAGE_LENGTH 4
+#define PROTOCOL_REQUEST_MESSAGE_LENGTH 6
 
-uint8_t distance_to_ground;
 uint8_t distance_to_object;
+uint8_t distance_to_left;
+uint8_t distance_to_right;
+uint8_t distance_to_ground;
 uint8_t ir_left;
 uint8_t ir_right;
 
@@ -26,6 +28,8 @@ void update_data_from_slave() {
         distance_to_object = Wire.read();
         ir_left = Wire.read();
         ir_right = Wire.read();
+        distance_to_right = Wire.read();
+        distance_to_left = Wire.read();
     }
 }
 

@@ -1,4 +1,4 @@
-.pio
-.vscode
-include/config.hpp
+.pio/
+.vscode/
 output/
+include/config.hpp
