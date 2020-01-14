@@ -6,6 +6,8 @@
 // Define some constansts and variables
 #define DEBUG
 #define I2C_ADDRESS 10
+#define PROTOCOL_BORDER_NOT_FOUND 0
+#define PROTOCOL_BORDER_FOUND 1
 
 uint8_t distance_to_object;
 uint8_t distance_to_left;
@@ -47,19 +49,23 @@ void request_event() {
 
 // Init the serial, wire and pins
 void setup() {
+    // Init serial when debug flag is set
     #ifdef DEBUG
         Serial.begin(115200);
     #endif
 
+    // Init the i2c communication
     Wire.begin(I2C_ADDRESS);
     Wire.onRequest(request_event);
 
+    // Init the pins
     pinMode(OBJECT_ECHO_PIN, INPUT);
     pinMode(GROUND_ECHO_PIN, INPUT);
     pinMode(TRIGGER_PIN, OUTPUT);
     pinMode(LEFT_IR_PIN, INPUT);
     pinMode(RIGHT_IR_PIN, INPUT);
 
+    // Init the servo
     servo.attach(SERVO_PIN);
 }
 
@@ -76,8 +82,8 @@ void loop() {
     distance_to_ground = echo_get_distance(GROUND_ECHO_PIN);
 
     // Read the ir sensors
-    ir_left = analogRead(LEFT_IR_PIN) < 200;
-    ir_right = analogRead(RIGHT_IR_PIN) < 200;
+    ir_left = analogRead(LEFT_IR_PIN) < 200 ? PROTOCOL_BORDER_FOUND : PROTOCOL_BORDER_NOT_FOUND;
+    ir_right = analogRead(RIGHT_IR_PIN) < 200 ? PROTOCOL_BORDER_FOUND : PROTOCOL_BORDER_NOT_FOUND;
 
     // When servo is on the edge write distance to the left and right variable
     if (servo_position_index == 0) {
