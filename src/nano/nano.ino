@@ -82,8 +82,8 @@ void loop() {
     distance_to_ground = echo_get_distance(GROUND_ECHO_PIN);
 
     // Read the ir sensors
-    ir_left = analogRead(LEFT_IR_PIN) < 200 ? PROTOCOL_BORDER_FOUND : PROTOCOL_BORDER_NOT_FOUND;
-    ir_right = analogRead(RIGHT_IR_PIN) < 200 ? PROTOCOL_BORDER_FOUND : PROTOCOL_BORDER_NOT_FOUND;
+    ir_left = digitalRead(LEFT_IR_PIN) ? PROTOCOL_BORDER_FOUND : PROTOCOL_BORDER_NOT_FOUND;
+    ir_right = digitalRead(RIGHT_IR_PIN) ? PROTOCOL_BORDER_FOUND : PROTOCOL_BORDER_NOT_FOUND;
 
     // When servo is on the edge write distance to the left and right variable
     if (servo_position_index == 0) {
