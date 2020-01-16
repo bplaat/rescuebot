@@ -32,6 +32,7 @@ void update_data_from_slave() {
         distance_to_ground = Wire.read();
         ir_left = Wire.read();
         ir_right = Wire.read();
+        printf("distance_to_object: %d, distance_to_left: %d, distance_to_right: %d, distance_to_ground: %d, ir_left: %d, ir_right: %d\n",distance_to_object, distance_to_left, distance_to_right, distance_to_ground, ir_left, ir_right);
     }
 }
 
