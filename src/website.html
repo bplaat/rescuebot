@@ -22,32 +22,29 @@
 <body>
     <div class="root flex-vertical">
         <div class="flex-horizontal mobile-flex-vertical">
-            <div class="logo">RescueBot <span id="rescuebot-name-label"></span></div>
-            <div id="state-label" class="data flex">- Still</div>
-            <div id="last-border-position-label" class="data flex">Border position unkown</div>
-            <button id="auto-control-button" class="flex auto-control-button auto-control-button-off">Auto control off</button>
+            <div class="logo">RescueBot &nbsp;<span id="rescuebot-name-label">?</span></div>
+            <div id="state-label" class="data flex">?</div>
+            <div id="last-border-position-label" class="data flex">?</div>
+            <button id="auto-control-button" class="flex auto-control-button" disabled>?</button>
         </div>
         <div class="flex flex-horizontal">
-            <button id="turn-left-button" class="flex">&larr; Left</button>
+            <button id="turn-left-button" class="flex" disabled>&larr; Left</button>
             <div class="flex flex-vertical">
-                <button id="move-forward-button" class="flex">&uarr; Forward</button>
-                <button id="move-backward-button" class="flex">&darr; Backward</button>
+                <button id="move-forward-button" class="flex" disabled>&uarr; Forward</button>
+                <button id="move-backward-button" class="flex" disabled>&darr; Backward</button>
             </div>
-            <button id="turn-right-button" class="flex">Right &rarr;</button>
+            <button id="turn-right-button" class="flex" disabled>Right &rarr;</button>
         </div>
     </div>
     <script>
-        var rescuebot_name = '';
+        var rescuebot_name;
 
-        var BORDER_UNKOWN = 0;
+        var last_border_position;
 
         var border_strings = [
-            'Border position unkown',
             'Border position left',
             'Border position right'
         ];
-
-        var last_border_position = BORDER_UNKOWN;
 
         var STATE_STILL = 0;
         var STATE_MOVE_FORWARD = 1;
@@ -57,7 +54,7 @@
         var STATE_OVERIDE_TURN_RIGHT = 15;
         var STATE_OVERIDE_MOVE_BACKWARD = 16;
 
-        var state = STATE_STILL;
+        var state;
 
         var state_strings = [
             '- Still',
@@ -80,9 +77,7 @@
             '\u2191 Overide moving forward',
             '\u2190 Overide turning left',
             '\u2192 Overide turning right',
-            '\u2193 Overide moving backward',
-
-            '\u2191 Tunnel moving forward'
+            '\u2193 Overide moving backward'
         ];
 
         var auto_control = false;
@@ -97,108 +92,97 @@
         var turn_right_button = document.getElementById('turn-right-button');
         var move_backward_button = document.getElementById('move-backward-button');
 
-        function update_auto_control (new_auto_control) {
-            auto_control = new_auto_control;
-            if (auto_control) {
-                auto_control_button.classList.add('auto-control-button-on');
-                auto_control_button.classList.remove('auto-control-button-off');
-                auto_control_button.textContent = 'Auto control on';
+        var ws = new WebSocket('ws://' + window.location.hostname + ':81');
 
-                move_forward_button.disabled = true;
-                turn_left_button.disabled = true;
-                turn_right_button.disabled = true;
-                move_backward_button.disabled = true;
-            } else {
-                auto_control_button.classList.add('auto-control-button-off');
-                auto_control_button.classList.remove('auto-control-button-on');
-                auto_control_button.textContent = 'Auto control off';
+        ws.onmessage = function (event) {
+            var data = JSON.parse(event.message);
 
-                move_forward_button.disabled = false;
-                turn_left_button.disabled = false;
-                turn_right_button.disabled = false;
-                move_backward_button.disabled = false;
+            if (data.rescuebot_name != rescuebot_name) {
+                rescuebot_name = data.rescuebot_name;
+                rescuebot_name_label.textContent = rescuebot_name;
             }
-        }
 
-        function update_state () {
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', '/api/update_state?auto_control=' + (auto_control ? 'true' : 'false') + '&state=' + state, true);
-            xhr.send();
-        }
+            if (data.last_border_position != last_border_position) {
+                last_border_position = data.last_border_position;
+                last_border_position_label.textContent = border_strings[last_border_position];
+            }
 
-        function load_state () {
-            var xhr = new XMLHttpRequest();
-            xhr.onload = function () {
-                var data = JSON.parse(xhr.responseText);
+            if (data.auto_control != auto_control) {
+                auto_control = data.auto_control;
 
-                if (data.rescuebot_name != rescuebot_name) {
-                    rescuebot_name = data.rescuebot_name;
-                    rescuebot_name_label.textContent = rescuebot_name;
+                if (auto_control) {
+                    auto_control_button.classList.add('auto-control-button-on');
+                    auto_control_button.classList.remove('auto-control-button-off');
+                    auto_control_button.textContent = 'Auto control on';
+
+                    move_forward_button.disabled = true;
+                    turn_left_button.disabled = true;
+                    turn_right_button.disabled = true;
+                    move_backward_button.disabled = true;
+                } else {
+                    auto_control_button.classList.add('auto-control-button-off');
+                    auto_control_button.classList.remove('auto-control-button-on');
+                    auto_control_button.textContent = 'Auto control off';
+
+                    move_forward_button.disabled = false;
+                    turn_left_button.disabled = false;
+                    turn_right_button.disabled = false;
+                    move_backward_button.disabled = false;
                 }
+            }
 
-                if (data.last_border_position != last_border_position) {
-                    last_border_position = data.last_border_position;
-                    last_border_position_label.textContent = border_strings[last_border_position];
-                }
+            if (data.state != state) {
+                state = data.state;
+                state_label.textContent = state_strings[state];
+            }
+        };
 
-                if (data.auto_control != auto_control) {
-                    update_auto_control(data.auto_control);
-                }
+        ws.onclose = function () {
+            alert('The connection with the RescueBot is lost!');
+        };
 
-                if (data.state != state) {
-                    state = data.state;
-                    state_label.textContent = state_strings[state];
-                }
-
-                setTimeout(load_state, 250);
-            };
-            xhr.onerror = function () {
-                setTimeout(load_state, 500);
-            };
-            xhr.open('GET', '/api/get_state', true);
-            xhr.send();
+        function send_data () {
+            ws.send(JSON.stringify({ auto_control: auto_control, state: state }));
         }
 
         auto_control_button.addEventListener('click', function () {
-            update_auto_control(!auto_control);
+            auto_control = !auto_control;
             state = auto_control ? STATE_MOVE_FORWARD : STATE_STILL;
-            update_state();
+            send_data();
         }, false);
 
         function stop_motor () {
             state = STATE_STILL;
-            update_state();
+            send_data();
         }
 
         move_forward_button.addEventListener('mousedown', function () {
             state = STATE_OVERIDE_MOVE_FORWARD;
-            update_state();
+            send_data();
         }, false);
 
         move_forward_button.addEventListener('mouseup', stop_motor, false);
 
         turn_left_button.addEventListener('mousedown', function () {
             state = STATE_OVERIDE_TURN_LEFT;
-            update_state();
+            send_data();
         }, false);
 
         turn_left_button.addEventListener('mouseup', stop_motor, false);
 
         turn_right_button.addEventListener('mousedown', function () {
             state = STATE_OVERIDE_TURN_RIGHT;
-            update_state();
+            send_data();
         }, false);
 
         turn_right_button.addEventListener('mouseup', stop_motor, false);
 
         move_backward_button.addEventListener('mousedown', function () {
             state = STATE_OVERIDE_MOVE_BACKWARD;
-            update_state();
+            send_data();
         }, false);
 
         move_backward_button.addEventListener('mouseup', stop_motor, false);
-
-        load_state();
     </script>
 </body>
 </html>

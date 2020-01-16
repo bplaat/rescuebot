@@ -1,10 +1,10 @@
-// The arduino, servo and wire library
+// Include the arduino, servo and wire library
 #include <Arduino.h>
 #include <Servo.h>
 #include <Wire.h>
 
 // Define some constansts and variables
-#define DEBUG
+// #define DEBUG
 #define I2C_ADDRESS 10
 #define PROTOCOL_BORDER_NOT_FOUND 0
 #define PROTOCOL_BORDER_FOUND 1

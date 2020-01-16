@@ -2,9 +2,13 @@
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
+#include <WebSocketsServer.h>
+#include <ArduinoJson.h>
 #include <Wire.h>
 #include "config.hpp"
 #include "website.hpp"
+
+#define DEBUG
 
 // #############################################################################
 // ############################# I2C COMMUNICATION #############################
@@ -32,7 +36,10 @@ void update_data_from_slave() {
         distance_to_ground = Wire.read();
         ir_left = Wire.read();
         ir_right = Wire.read();
-        printf("distance_to_object: %d, distance_to_left: %d, distance_to_right: %d, distance_to_ground: %d, ir_left: %d, ir_right: %d\n",distance_to_object, distance_to_left, distance_to_right, distance_to_ground, ir_left, ir_right);
+
+        #ifdef DEBUG
+            printf("distance_to_object: %d, distance_to_left: %d, distance_to_right: %d, distance_to_ground: %d, ir_left: %d, ir_right: %d\n", distance_to_object, distance_to_left, distance_to_right, distance_to_ground, ir_left, ir_right);
+        #endif
     }
 }
 
@@ -253,17 +260,16 @@ void set_state(uint8_t new_state) {
 void update_state() {
     uint32_t time_passed = millis() - state_time;
 
-    // Tunnel protocol
-    if (distance_to_left < 20 && distance_to_right < 20) {
-        set_state(STATE_TUNNEL_FORWARD);
-        return;
-    }
+    // // Tunnel protocol
+    // if (distance_to_left < 20 && distance_to_right < 20) {
+    //     set_state(STATE_TUNNEL_FORWARD);
+    //     return;
+    // }
 
     // Avoid left border
     if (ir_left == PROTOCOL_BORDER_FOUND) {
         set_state(STATE_AVOID_LEFT_BORDER);
     }
-
 
     if (state == STATE_AVOID_LEFT_BORDER && ir_left == HIGH) {
         set_state(STATE_MOVE_FORWARD);
@@ -278,66 +284,66 @@ void update_state() {
         set_state(STATE_MOVE_FORWARD);
     }
 
-    // Avoid objects
-    if (distance_to_object < 25) {
-        set_state(STATE_AVOID_OBJECT_MOVE_BACKWARD);
-    }
+    // // Avoid objects
+    // if (distance_to_object < 25) {
+    //     set_state(STATE_AVOID_OBJECT_MOVE_BACKWARD);
+    // }
 
-    if (state == STATE_AVOID_OBJECT_MOVE_BACKWARD && time_passed > 1000) {
-        if (last_border_position == BORDER_LEFT) {
-            set_state(STATE_AVOID_OBJECT_TURN_RIGHT_FIRST);
-        }
-        if (last_border_position == BORDER_RIGHT) {
-            set_state(STATE_AVOID_OBJECT_TURN_LEFT_FIRST);
-        }
-    }
+    // if (state == STATE_AVOID_OBJECT_MOVE_BACKWARD && time_passed > 1000) {
+    //     if (last_border_position == BORDER_LEFT) {
+    //         set_state(STATE_AVOID_OBJECT_TURN_RIGHT_FIRST);
+    //     }
+    //     if (last_border_position == BORDER_RIGHT) {
+    //         set_state(STATE_AVOID_OBJECT_TURN_LEFT_FIRST);
+    //     }
+    // }
 
-    if (state == STATE_AVOID_OBJECT_TURN_LEFT_FIRST && time_passed > 1000) {
-        set_state(STATE_AVOID_OBJECT_MOVE_FORWARD);
-    }
+    // if (state == STATE_AVOID_OBJECT_TURN_LEFT_FIRST && time_passed > 1000) {
+    //     set_state(STATE_AVOID_OBJECT_MOVE_FORWARD);
+    // }
 
-    if (state == STATE_AVOID_OBJECT_TURN_RIGHT_FIRST && time_passed > 1000) {
-        set_state(STATE_AVOID_OBJECT_MOVE_FORWARD);
-    }
+    // if (state == STATE_AVOID_OBJECT_TURN_RIGHT_FIRST && time_passed > 1000) {
+    //     set_state(STATE_AVOID_OBJECT_MOVE_FORWARD);
+    // }
 
-    if (state == STATE_AVOID_OBJECT_MOVE_FORWARD && time_passed > 1000) {
-        if (last_border_position == BORDER_LEFT) {
-            set_state(STATE_AVOID_OBJECT_TURN_LEFT_SECOND);
-        }
-        if (last_border_position == BORDER_RIGHT) {
-            set_state(STATE_AVOID_OBJECT_TURN_RIGHT_SECOND);
-        }
-    }
+    // if (state == STATE_AVOID_OBJECT_MOVE_FORWARD && time_passed > 1000) {
+    //     if (last_border_position == BORDER_LEFT) {
+    //         set_state(STATE_AVOID_OBJECT_TURN_LEFT_SECOND);
+    //     }
+    //     if (last_border_position == BORDER_RIGHT) {
+    //         set_state(STATE_AVOID_OBJECT_TURN_RIGHT_SECOND);
+    //     }
+    // }
 
-    if (state == STATE_AVOID_OBJECT_TURN_LEFT_SECOND && time_passed > 1000) {
-        set_state(STATE_MOVE_FORWARD);
-    }
+    // if (state == STATE_AVOID_OBJECT_TURN_LEFT_SECOND && time_passed > 1000) {
+    //     set_state(STATE_MOVE_FORWARD);
+    // }
 
-    if (state == STATE_AVOID_OBJECT_TURN_RIGHT_SECOND && time_passed > 1000) {
-        set_state(STATE_MOVE_FORWARD);
-    }
+    // if (state == STATE_AVOID_OBJECT_TURN_RIGHT_SECOND && time_passed > 1000) {
+    //     set_state(STATE_MOVE_FORWARD);
+    // }
 
-    // Avoid cliffs
-    if (distance_to_ground > 2) {
-        set_state(STATE_AVOID_CLIFF_MOVE_BACKWARD);
-    }
+    // // Avoid cliffs
+    // if (distance_to_ground > 2) {
+    //     set_state(STATE_AVOID_CLIFF_MOVE_BACKWARD);
+    // }
 
-    if (state == STATE_AVOID_CLIFF_MOVE_BACKWARD && time_passed > 1000) {
-        if (last_border_position == BORDER_LEFT) {
-            set_state(STATE_AVOID_CLIFF_TURN_RIGHT);
-        }
-        if (last_border_position == BORDER_RIGHT) {
-            set_state(STATE_AVOID_CLIFF_TURN_RIGHT);
-        }
-    }
+    // if (state == STATE_AVOID_CLIFF_MOVE_BACKWARD && time_passed > 1000) {
+    //     if (last_border_position == BORDER_LEFT) {
+    //         set_state(STATE_AVOID_CLIFF_TURN_RIGHT);
+    //     }
+    //     if (last_border_position == BORDER_RIGHT) {
+    //         set_state(STATE_AVOID_CLIFF_TURN_RIGHT);
+    //     }
+    // }
 
-    if (state == STATE_AVOID_CLIFF_TURN_LEFT && time_passed > 1000) {
-        set_state(STATE_MOVE_FORWARD);
-    }
+    // if (state == STATE_AVOID_CLIFF_TURN_LEFT && time_passed > 1000) {
+    //     set_state(STATE_MOVE_FORWARD);
+    // }
 
-    if (state == STATE_AVOID_CLIFF_TURN_RIGHT && time_passed > 1000) {
-        set_state(STATE_MOVE_FORWARD);
-    }
+    // if (state == STATE_AVOID_CLIFF_TURN_RIGHT && time_passed > 1000) {
+    //     set_state(STATE_MOVE_FORWARD);
+    // }
 }
 
 // #############################################################################
@@ -365,39 +371,57 @@ void wifi_connect() {
 }
 
 // The web server object
-ESP8266WebServer server(80);
+ESP8266WebServer webserver(80);
 
 // A function that inits the webs server
 void webserver_init() {
     // Return the web interface when you go to the root path
-    server.on("/", []() {
-        server.send(200, "text/html", src_website_html, src_website_html_len);
-    });
-
-    // The api endpoint to get the state
-    server.on("/api/get_state", []() {
-        // Return a simple json response
-        String auto_control_reponse = auto_control ? "true" : "false";
-        server.send(200, "application/json", "{\"rescuebot_name\":\"" + rescuebot_name + "\"," +
-            "\"last_border_position\":" + String(last_border_position) + "," +
-            "\"auto_control\":" + auto_control_reponse + "," +
-            "\"state\":" + String(state) + "}");
-    });
-
-    // The api endpoint to update the state
-    server.on("/api/update_state", []() {
-        // Update the auto control by the auto control GET variable
-        auto_control = server.arg("auto_control") == "true" ? true : false;
-
-        // Update the state by the state GET variable
-        set_state(atoi(server.arg("state").c_str()));
-
-        // Return a simple json message for completeness
-        server.send(200, "application/json", "{\"message\":\"succesfull\"}");
+    webserver.on("/", []() {
+        webserver.send(200, "text/html", src_website_html, src_website_html_len);
     });
 
     // Begin the web server
-    server.begin();
+    webserver.begin();
+}
+
+// The web socket server object
+WebSocketsServer websocket(81);
+
+// The JSON library data pool
+StaticJsonDocument<256> doc;
+
+// The websocket event handler function
+void websocket_event(uint8_t num, WStype_t type, uint8_t *payload, size_t length){
+    if (type == WStype_CONNECTED) {
+        // Send data to new client
+        String client_message;
+        doc["rescuebot_name"] = rescuebot_name;
+        doc["auto_control"] = auto_control;
+        doc["state"] = state;
+        serializeJson(doc, client_message);
+        websocket.sendTXT(num, client_message);
+    }
+
+    if (type == WStype_TEXT) {
+        // Update data from json message
+        deserializeJson(doc, payload, length);
+        auto_control = doc["auto_control"];
+        state = doc["state"];
+
+        // Send change message to all clients
+        String client_message;
+        doc["rescuebot_name"] = rescuebot_name;
+        doc["auto_control"] = auto_control;
+        doc["state"] = state;
+        serializeJson(doc, client_message);
+        websocket.broadcastTXT(client_message);
+    }
+}
+
+// Init the websockets server
+void websocket_init() {
+    websocket.begin();
+    websocket.onEvent(websocket_event);
 }
 
 // #############################################################################
@@ -414,12 +438,16 @@ void setup() {
     motor_init();
     wifi_connect();
     webserver_init();
+    websocket_init();
 }
 
 // The program loop
 void loop() {
+    // Handle websocket clients
+    websocket.loop();
+
     // Handle any http clients
-    server.handleClient();
+    webserver.handleClient();
 
     // Get new data from the slave
     update_data_from_slave();
