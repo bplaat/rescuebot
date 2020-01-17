@@ -11,6 +11,11 @@
 // The serial debug flag
 // #define DEBUG
 
+// Hall sensor defines
+#define ACTIVATE_HALL_SENSOR
+#define HALL_SENSOR_PIN D1
+
+// Define function before usage in state code
 void broadcast_new_state();
 
 // #############################################################################
@@ -181,106 +186,108 @@ uint32_t state_time = millis();
 
 // A function that sets the state and reflects it to the motors
 void set_state(uint8_t new_state, bool broadcast_to_clients) {
-    state = new_state;
-    state_time = millis();
+        if (new_state != state) {
+        state = new_state;
+        state_time = millis();
 
-    // Standard states
-    if (state == STATE_STILL) {
-        motor_stop();
-    }
+        // Standard states
+        if (state == STATE_STILL) {
+            motor_stop();
+        }
 
-    if (state == STATE_MOVE_FORWARD) {
-        motor_move_forward();
-    }
+        if (state == STATE_MOVE_FORWARD) {
+            motor_move_forward();
+        }
 
-    // Avoid left border
-    if (state == STATE_AVOID_LEFT_BORDER) {
-        last_border_position = BORDER_LEFT;
-        motor_turn_right();
-    }
+        // Avoid left border
+        if (state == STATE_AVOID_LEFT_BORDER) {
+            last_border_position = BORDER_LEFT;
+            motor_turn_right();
+        }
 
-    // Avoid right border
-    if (state == STATE_AVOID_RIGHT_BORDER) {
-        last_border_position = BORDER_RIGHT;
-        motor_turn_left();
-    }
+        // Avoid right border
+        if (state == STATE_AVOID_RIGHT_BORDER) {
+            last_border_position = BORDER_RIGHT;
+            motor_turn_left();
+        }
 
-    // Avoid front border
-    if (state == STATE_AVOID_FRONT_BORDER_BACKWARD) {
-        motor_move_backward();
-    }
+        // Avoid front border
+        if (state == STATE_AVOID_FRONT_BORDER_BACKWARD) {
+            motor_move_backward();
+        }
 
-    if (state == STATE_AVOID_FRONT_BORDER_LEFT) {
-        motor_turn_left();
-    }
+        if (state == STATE_AVOID_FRONT_BORDER_LEFT) {
+            motor_turn_left();
+        }
 
-    if (state == STATE_AVOID_FRONT_BORDER_RIGHT) {
-        motor_turn_right();
-    }
+        if (state == STATE_AVOID_FRONT_BORDER_RIGHT) {
+            motor_turn_right();
+        }
 
-    // Avoid objects
-    if (state == STATE_AVOID_OBJECT_MOVE_BACKWARD) {
-        motor_move_backward();
-    }
+        // Avoid objects
+        if (state == STATE_AVOID_OBJECT_MOVE_BACKWARD) {
+            motor_move_backward();
+        }
 
-    if (state == STATE_AVOID_OBJECT_TURN_LEFT_FIRST) {
-        motor_turn_left();
-    }
+        if (state == STATE_AVOID_OBJECT_TURN_LEFT_FIRST) {
+            motor_turn_left();
+        }
 
-    if (state == STATE_AVOID_OBJECT_TURN_RIGHT_FIRST) {
-        motor_turn_right();
-    }
+        if (state == STATE_AVOID_OBJECT_TURN_RIGHT_FIRST) {
+            motor_turn_right();
+        }
 
-    if (state == STATE_AVOID_OBJECT_MOVE_FORWARD) {
-        motor_move_forward();
-    }
+        if (state == STATE_AVOID_OBJECT_MOVE_FORWARD) {
+            motor_move_forward();
+        }
 
-    if (state == STATE_AVOID_OBJECT_TURN_LEFT_SECOND) {
-        motor_turn_left();
-    }
+        if (state == STATE_AVOID_OBJECT_TURN_LEFT_SECOND) {
+            motor_turn_left();
+        }
 
-    if (state == STATE_AVOID_OBJECT_TURN_RIGHT_SECOND) {
-        motor_turn_right();
-    }
+        if (state == STATE_AVOID_OBJECT_TURN_RIGHT_SECOND) {
+            motor_turn_right();
+        }
 
-    // Avoid cliffs
-    if (state == STATE_AVOID_CLIFF_MOVE_BACKWARD) {
-        motor_move_backward();
-    }
+        // Avoid cliffs
+        if (state == STATE_AVOID_CLIFF_MOVE_BACKWARD) {
+            motor_move_backward();
+        }
 
-    if (state == STATE_AVOID_CLIFF_TURN_LEFT) {
-        motor_turn_left();
-    }
+        if (state == STATE_AVOID_CLIFF_TURN_LEFT) {
+            motor_turn_left();
+        }
 
-    if (state == STATE_AVOID_CLIFF_TURN_RIGHT) {
-        motor_turn_right();
-    }
+        if (state == STATE_AVOID_CLIFF_TURN_RIGHT) {
+            motor_turn_right();
+        }
 
-    // Overide motor
-    if (state == STATE_OVERIDE_MOVE_FORWARD) {
-        motor_move_forward();
-    }
+        // Overide motor
+        if (state == STATE_OVERIDE_MOVE_FORWARD) {
+            motor_move_forward();
+        }
 
-    if (state == STATE_OVERIDE_TURN_LEFT) {
-        motor_turn_left();
-    }
+        if (state == STATE_OVERIDE_TURN_LEFT) {
+            motor_turn_left();
+        }
 
-    if (state == STATE_OVERIDE_TURN_RIGHT) {
-        motor_turn_right();
-    }
+        if (state == STATE_OVERIDE_TURN_RIGHT) {
+            motor_turn_right();
+        }
 
-    if (state == STATE_OVERIDE_MOVE_BACKWARD) {
-        motor_move_backward();
-    }
+        if (state == STATE_OVERIDE_MOVE_BACKWARD) {
+            motor_move_backward();
+        }
 
-    // Tunnel protocol
-    if (state == STATE_TUNNEL_FORWARD) {
-        motor_move_forward();
-    }
+        // Tunnel protocol
+        if (state == STATE_TUNNEL_FORWARD) {
+            motor_move_forward();
+        }
 
-    // Broadcast new state to clients
-    if (broadcast_to_clients) {
-        broadcast_new_state();
+        // Broadcast new state to clients
+        if (broadcast_to_clients) {
+            broadcast_new_state();
+        }
     }
 }
 
@@ -496,6 +503,9 @@ void setup() {
     Serial.begin(9600);
 
     // Init all the things
+    #ifdef ACTIVATE_HALL_SENSOR
+        pinMode(HALL_SENSOR_PIN, OUTPUT);
+    #endif
     i2c_init();
     motor_init();
     wifi_connect();
