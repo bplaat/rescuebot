@@ -10,6 +10,8 @@
         .logo{padding:16px;font-size:20px;font-weight:bold}
         .flex{flex:1}.flex-horizontal{display:flex}.flex-vertical{display:flex;flex-direction:column}
         .data{color:#444;font-family:'Courier New',Courier,monospace;text-align:center;line-height:64px;}
+        button{background-color:#ddd}
+        .active{color:#fff;background-color:#f0f;}
         .auto-control-button-on{color:#fff;background-color:#6b6}
         .auto-control-button-off{color:#fff;background-color:#e22}
         @media (max-width: 640px) {
@@ -95,45 +97,76 @@
         var ws = new WebSocket('ws://' + window.location.hostname + ':81');
 
         ws.onmessage = function (event) {
-            var data = JSON.parse(event.message);
+            try {
+                var data = JSON.parse(event.data);
+                console.log(data);
 
-            if (data.rescuebot_name != rescuebot_name) {
-                rescuebot_name = data.rescuebot_name;
-                rescuebot_name_label.textContent = rescuebot_name;
-            }
+                if (data.rescuebot_name != undefined && data.rescuebot_name != rescuebot_name) {
+                    rescuebot_name = data.rescuebot_name;
+                    rescuebot_name_label.textContent = rescuebot_name;
 
-            if (data.last_border_position != last_border_position) {
-                last_border_position = data.last_border_position;
-                last_border_position_label.textContent = border_strings[last_border_position];
-            }
-
-            if (data.auto_control != auto_control) {
-                auto_control = data.auto_control;
-
-                if (auto_control) {
-                    auto_control_button.classList.add('auto-control-button-on');
-                    auto_control_button.classList.remove('auto-control-button-off');
-                    auto_control_button.textContent = 'Auto control on';
-
-                    move_forward_button.disabled = true;
-                    turn_left_button.disabled = true;
-                    turn_right_button.disabled = true;
-                    move_backward_button.disabled = true;
-                } else {
-                    auto_control_button.classList.add('auto-control-button-off');
-                    auto_control_button.classList.remove('auto-control-button-on');
-                    auto_control_button.textContent = 'Auto control off';
-
-                    move_forward_button.disabled = false;
-                    turn_left_button.disabled = false;
-                    turn_right_button.disabled = false;
-                    move_backward_button.disabled = false;
+                    auto_control_button.disabled = false;
                 }
-            }
 
-            if (data.state != state) {
-                state = data.state;
-                state_label.textContent = state_strings[state];
+                if (data.last_border_position != last_border_position) {
+                    last_border_position = data.last_border_position;
+                    last_border_position_label.textContent = border_strings[last_border_position];
+                }
+
+                if (data.auto_control != auto_control) {
+                    auto_control = data.auto_control;
+
+                    if (auto_control) {
+                        auto_control_button.classList.add('auto-control-button-on');
+                        auto_control_button.classList.remove('auto-control-button-off');
+                        auto_control_button.textContent = 'Auto control on';
+
+                        move_forward_button.disabled = true;
+                        turn_left_button.disabled = true;
+                        turn_right_button.disabled = true;
+                        move_backward_button.disabled = true;
+                    } else {
+                        auto_control_button.classList.add('auto-control-button-off');
+                        auto_control_button.classList.remove('auto-control-button-on');
+                        auto_control_button.textContent = 'Auto control off';
+
+                        move_forward_button.disabled = false;
+                        turn_left_button.disabled = false;
+                        turn_right_button.disabled = false;
+                        move_backward_button.disabled = false;
+                    }
+                }
+
+                if (data.state != state) {
+                    state = data.state;
+                    state_label.textContent = state_strings[state];
+
+                    if (state == STATE_OVERIDE_MOVE_FORWARD) {
+                        move_forward_button.classList.add('active');
+                    } else {
+                        move_forward_button.classList.remove('active');
+                    }
+
+                    if (state == STATE_OVERIDE_TURN_LEFT) {
+                        turn_left_button.classList.add('active');
+                    } else {
+                        turn_left_button.classList.remove('active');
+                    }
+
+                    if (state == STATE_OVERIDE_TURN_RIGHT) {
+                        turn_right_button.classList.add('active');
+                    } else {
+                        turn_right_button.classList.remove('active');
+                    }
+
+                    if (state == STATE_OVERIDE_MOVE_BACKWARD) {
+                        move_backward_button.classList.add('active');
+                    } else {
+                        move_backward_button.classList.remove('active');
+                    }
+                }
+            } catch (error) {
+                console.log(error);
             }
         };
 

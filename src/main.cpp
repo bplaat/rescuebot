@@ -8,7 +8,8 @@
 #include "config.hpp"
 #include "website.hpp"
 
-#define DEBUG
+// The serial debug flag
+// #define DEBUG
 
 // #############################################################################
 // ############################# I2C COMMUNICATION #############################
@@ -16,9 +17,12 @@
 
 // The i2c variables
 #define I2C_ADDRESS 10
+#define REQUEST_TIMEOUT 500
 #define PROTOCOL_REQUEST_MESSAGE_LENGTH 6
 #define PROTOCOL_BORDER_NOT_FOUND 0
 #define PROTOCOL_BORDER_FOUND 1
+
+uint32_t request_time;
 
 uint8_t distance_to_object;
 uint8_t distance_to_left;
@@ -45,6 +49,7 @@ void update_data_from_slave() {
 
 // A function that ints the i2c and gets the data
 void i2c_init() {
+    request_time = millis();
     Wire.begin();
     update_data_from_slave();
 }
@@ -274,13 +279,14 @@ void set_state(uint8_t new_state) {
 
 // A function that updates the state with the data
 void update_state() {
+    // Calculate time passsed since last state change
     uint32_t time_passed = millis() - state_time;
 
-    // // Tunnel protocol
-    // if (distance_to_left < 20 && distance_to_right < 20) {
-    //     set_state(STATE_TUNNEL_FORWARD);
-    //     return;
-    // }
+    /* Tunnel protocol
+    if (distance_to_left < 20 && distance_to_right < 20) {
+        set_state(STATE_TUNNEL_FORWARD);
+        return;
+    } */
 
     if (
         state != STATE_AVOID_FRONT_BORDER_BACKWARD &&
@@ -328,7 +334,7 @@ void update_state() {
         set_state(STATE_MOVE_FORWARD);
     }
 
-    // Avoid objects
+    /* Avoid objects
     if (distance_to_object < 25) {
         set_state(STATE_AVOID_OBJECT_MOVE_BACKWARD);
     }
@@ -365,29 +371,29 @@ void update_state() {
 
     if (state == STATE_AVOID_OBJECT_TURN_RIGHT_SECOND && time_passed > 1000) {
         set_state(STATE_MOVE_FORWARD);
+    }*/
+
+    /* Avoid cliffs
+    if (distance_to_ground > 10) {
+        set_state(STATE_AVOID_CLIFF_MOVE_BACKWARD);
     }
 
-    // // Avoid cliffs
-    // if (distance_to_ground > 10) {
-    //     set_state(STATE_AVOID_CLIFF_MOVE_BACKWARD);
-    // }
+    if (state == STATE_AVOID_CLIFF_MOVE_BACKWARD && time_passed > 1000) {
+        if (last_border_position == BORDER_LEFT) {
+            set_state(STATE_AVOID_CLIFF_TURN_RIGHT);
+        }
+        if (last_border_position == BORDER_RIGHT) {
+            set_state(STATE_AVOID_CLIFF_TURN_RIGHT);
+        }
+    }
 
-    // if (state == STATE_AVOID_CLIFF_MOVE_BACKWARD && time_passed > 1000) {
-    //     if (last_border_position == BORDER_LEFT) {
-    //         set_state(STATE_AVOID_CLIFF_TURN_RIGHT);
-    //     }
-    //     if (last_border_position == BORDER_RIGHT) {
-    //         set_state(STATE_AVOID_CLIFF_TURN_RIGHT);
-    //     }
-    // }
+    if (state == STATE_AVOID_CLIFF_TURN_LEFT && time_passed > 1000) {
+        set_state(STATE_MOVE_FORWARD);
+    }
 
-    // if (state == STATE_AVOID_CLIFF_TURN_LEFT && time_passed > 1000) {
-    //     set_state(STATE_MOVE_FORWARD);
-    // }
-
-    // if (state == STATE_AVOID_CLIFF_TURN_RIGHT && time_passed > 1000) {
-    //     set_state(STATE_MOVE_FORWARD);
-    // }
+    if (state == STATE_AVOID_CLIFF_TURN_RIGHT && time_passed > 1000) {
+        set_state(STATE_MOVE_FORWARD);
+    }*/
 }
 
 // #############################################################################
@@ -453,12 +459,7 @@ void websocket_event(uint8_t num, WStype_t type, uint8_t *payload, size_t length
         state = doc["state"];
 
         // Send change message to all clients
-        String client_message;
-        doc["rescuebot_name"] = rescuebot_name;
-        doc["auto_control"] = auto_control;
-        doc["state"] = state;
-        serializeJson(doc, client_message);
-        websocket.broadcastTXT(client_message);
+        websocket.broadcastTXT(payload, length);
     }
 }
 
@@ -475,7 +476,7 @@ void websocket_init() {
 // The start of our program
 void setup() {
     // Init the serial output
-    Serial.begin(115200);
+    Serial.begin(9600);
 
     // Init all the things
     i2c_init();
@@ -493,8 +494,11 @@ void loop() {
     // Handle any http clients
     webserver.handleClient();
 
-    // Get new data from the slave
-    update_data_from_slave();
+    // Get new data from the slave with a timeout
+    if (millis() - request_time > REQUEST_TIMEOUT) {
+        request_time = millis();
+        update_data_from_slave();
+    }
 
     // Update the state with the data when auto control is on
     if (auto_control) {
