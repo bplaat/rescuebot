@@ -11,6 +11,8 @@
 // The serial debug flag
 // #define DEBUG
 
+void broadcast_new_state();
+
 // #############################################################################
 // ############################# I2C COMMUNICATION #############################
 // #############################################################################
@@ -174,11 +176,11 @@ uint8_t last_border_position = BORDER_LEFT;
 
 // The state variables
 bool auto_control = false;
-uint8_t state = STATE_STILL;
+uint8_t state = STATE_MOVE_FORWARD;
 uint32_t state_time = millis();
 
 // A function that sets the state and reflects it to the motors
-void set_state(uint8_t new_state) {
+void set_state(uint8_t new_state, bool broadcast_to_clients) {
     state = new_state;
     state_time = millis();
 
@@ -275,6 +277,11 @@ void set_state(uint8_t new_state) {
     if (state == STATE_TUNNEL_FORWARD) {
         motor_move_forward();
     }
+
+    // Broadcast new state to clients
+    if (broadcast_to_clients) {
+        broadcast_new_state();
+    }
 }
 
 // A function that updates the state with the data
@@ -284,7 +291,7 @@ void update_state() {
 
     /* Tunnel protocol
     if (distance_to_left < 20 && distance_to_right < 20) {
-        set_state(STATE_TUNNEL_FORWARD);
+        set_state(STATE_TUNNEL_FORWARD, true);
         return;
     } */
 
@@ -295,104 +302,104 @@ void update_state() {
     ) {
         // Avoid left border
         if (ir_left == PROTOCOL_BORDER_FOUND) {
-            set_state(STATE_AVOID_LEFT_BORDER);
+            set_state(STATE_AVOID_LEFT_BORDER, true);
         }
 
         if (state == STATE_AVOID_LEFT_BORDER && ir_left == PROTOCOL_BORDER_NOT_FOUND) {
-            set_state(STATE_MOVE_FORWARD);
+            set_state(STATE_MOVE_FORWARD, true);
         }
 
         // Avoid right border
         if (ir_right == PROTOCOL_BORDER_FOUND) {
-            set_state(STATE_AVOID_RIGHT_BORDER);
+            set_state(STATE_AVOID_RIGHT_BORDER, true);
         }
 
         if (state == STATE_AVOID_RIGHT_BORDER && ir_right == PROTOCOL_BORDER_NOT_FOUND) {
-            set_state(STATE_MOVE_FORWARD);
+            set_state(STATE_MOVE_FORWARD, true);
         }
 
         // Avoid front border
         if (ir_left == PROTOCOL_BORDER_FOUND && ir_right == PROTOCOL_BORDER_FOUND) {
-            set_state(STATE_AVOID_FRONT_BORDER_BACKWARD);
+            set_state(STATE_AVOID_FRONT_BORDER_BACKWARD, true);
         }
     }
 
     if (state == STATE_AVOID_FRONT_BORDER_BACKWARD && time_passed > 1000) {
         if (last_border_position == BORDER_LEFT) {
-            set_state(STATE_AVOID_FRONT_BORDER_RIGHT);
+            set_state(STATE_AVOID_FRONT_BORDER_RIGHT, true);
         }
         if (last_border_position == BORDER_RIGHT) {
-            set_state(STATE_AVOID_FRONT_BORDER_LEFT);
+            set_state(STATE_AVOID_FRONT_BORDER_LEFT, true);
         }
     }
 
     if (state == STATE_AVOID_FRONT_BORDER_LEFT && time_passed > 1000) {
-        set_state(STATE_MOVE_FORWARD);
+        set_state(STATE_MOVE_FORWARD, true);
     }
 
     if (state == STATE_AVOID_FRONT_BORDER_RIGHT && time_passed > 1000) {
-        set_state(STATE_MOVE_FORWARD);
+        set_state(STATE_MOVE_FORWARD, true);
     }
 
-    /* Avoid objects
-    if (distance_to_object < 25) {
-        set_state(STATE_AVOID_OBJECT_MOVE_BACKWARD);
+    // Avoid objects
+    if (distance_to_object < 20) {
+        set_state(STATE_AVOID_OBJECT_MOVE_BACKWARD, true);
     }
 
     if (state == STATE_AVOID_OBJECT_MOVE_BACKWARD && time_passed > 1000) {
         if (last_border_position == BORDER_LEFT) {
-            set_state(STATE_AVOID_OBJECT_TURN_RIGHT_FIRST);
+            set_state(STATE_AVOID_OBJECT_TURN_RIGHT_FIRST, true);
         }
         if (last_border_position == BORDER_RIGHT) {
-            set_state(STATE_AVOID_OBJECT_TURN_LEFT_FIRST);
+            set_state(STATE_AVOID_OBJECT_TURN_LEFT_FIRST, true);
         }
     }
 
     if (state == STATE_AVOID_OBJECT_TURN_LEFT_FIRST && time_passed > 1000) {
-        set_state(STATE_AVOID_OBJECT_MOVE_FORWARD);
+        set_state(STATE_AVOID_OBJECT_MOVE_FORWARD, true);
     }
 
     if (state == STATE_AVOID_OBJECT_TURN_RIGHT_FIRST && time_passed > 1000) {
-        set_state(STATE_AVOID_OBJECT_MOVE_FORWARD);
+        set_state(STATE_AVOID_OBJECT_MOVE_FORWARD, true);
     }
 
     if (state == STATE_AVOID_OBJECT_MOVE_FORWARD && time_passed > 1000) {
         if (last_border_position == BORDER_LEFT) {
-            set_state(STATE_AVOID_OBJECT_TURN_LEFT_SECOND);
+            set_state(STATE_AVOID_OBJECT_TURN_LEFT_SECOND, true);
         }
         if (last_border_position == BORDER_RIGHT) {
-            set_state(STATE_AVOID_OBJECT_TURN_RIGHT_SECOND);
+            set_state(STATE_AVOID_OBJECT_TURN_RIGHT_SECOND, true);
         }
     }
 
     if (state == STATE_AVOID_OBJECT_TURN_LEFT_SECOND && time_passed > 1000) {
-        set_state(STATE_MOVE_FORWARD);
+        set_state(STATE_MOVE_FORWARD, true);
     }
 
     if (state == STATE_AVOID_OBJECT_TURN_RIGHT_SECOND && time_passed > 1000) {
-        set_state(STATE_MOVE_FORWARD);
-    }*/
+        set_state(STATE_MOVE_FORWARD, true);
+    }
 
     /* Avoid cliffs
     if (distance_to_ground > 10) {
-        set_state(STATE_AVOID_CLIFF_MOVE_BACKWARD);
+        set_state(STATE_AVOID_CLIFF_MOVE_BACKWARD, true);
     }
 
     if (state == STATE_AVOID_CLIFF_MOVE_BACKWARD && time_passed > 1000) {
         if (last_border_position == BORDER_LEFT) {
-            set_state(STATE_AVOID_CLIFF_TURN_RIGHT);
+            set_state(STATE_AVOID_CLIFF_TURN_RIGHT, true);
         }
         if (last_border_position == BORDER_RIGHT) {
-            set_state(STATE_AVOID_CLIFF_TURN_RIGHT);
+            set_state(STATE_AVOID_CLIFF_TURN_RIGHT, true);
         }
     }
 
     if (state == STATE_AVOID_CLIFF_TURN_LEFT && time_passed > 1000) {
-        set_state(STATE_MOVE_FORWARD);
+        set_state(STATE_MOVE_FORWARD, true);
     }
 
     if (state == STATE_AVOID_CLIFF_TURN_RIGHT && time_passed > 1000) {
-        set_state(STATE_MOVE_FORWARD);
+        set_state(STATE_MOVE_FORWARD, true);
     }*/
 }
 
@@ -437,13 +444,11 @@ void webserver_init() {
 // The web socket server object
 WebSocketsServer websocket(81);
 
-// The JSON library data pool
-StaticJsonDocument<256> doc;
-
 // The websocket event handler function
 void websocket_event(uint8_t num, WStype_t type, const uint8_t *payload, size_t length){
     if (type == WStype_CONNECTED) {
         // Send data to new client
+        StaticJsonDocument<256> doc;
         String client_message;
         doc["rescuebot_name"] = rescuebot_name;
         doc["state"] = state;
@@ -455,14 +460,24 @@ void websocket_event(uint8_t num, WStype_t type, const uint8_t *payload, size_t 
 
     if (type == WStype_TEXT) {
         // Update data from json message
+        StaticJsonDocument<256> doc;
         deserializeJson(doc, payload, length);
-        state = doc["state"];
-        last_border_position = doc["last_border_position"];
+        set_state(doc["state"], false);
         auto_control = doc["auto_control"];
 
         // Send change message to all clients
         websocket.broadcastTXT(payload, length);
     }
+}
+
+// Function that broadcasts the new state to the clients
+void broadcast_new_state() {
+    StaticJsonDocument<256> doc;
+    String client_message;
+    doc["state"] = state;
+    doc["last_border_position"] = last_border_position;
+    serializeJson(doc, client_message);
+    websocket.broadcastTXT(client_message);
 }
 
 // Init the websockets server

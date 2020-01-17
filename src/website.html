@@ -111,12 +111,12 @@
                     auto_control_button.disabled = false;
                 }
 
-                if (data.last_border_position != last_border_position) {
+                if (data.last_border_position != undefined && data.last_border_position != last_border_position) {
                     last_border_position = data.last_border_position;
                     last_border_position_label.textContent = border_strings[last_border_position];
                 }
 
-                if (data.auto_control != auto_control) {
+                if (data.auto_control != undefined && data.auto_control != auto_control) {
                     auto_control = data.auto_control;
 
                     if (auto_control) {
@@ -140,7 +140,7 @@
                     }
                 }
 
-                if (data.state != state) {
+                if (data.state != undefined && data.state != state) {
                     state = data.state;
                     state_label.textContent = state_strings[state];
 
@@ -178,33 +178,33 @@
         };
 
         auto_control_button.addEventListener('click', function () {
-            ws.send(JSON.stringify({ last_border_position: last_border_position, state: !auto_control ? STATE_MOVE_FORWARD : STATE_STILL, auto_control: !auto_control }));
+            ws.send(JSON.stringify({ state: !auto_control ? STATE_MOVE_FORWARD : STATE_STILL, auto_control: !auto_control }));
         }, false);
 
         function stop_motor () {
-            ws.send(JSON.stringify({ last_border_position: last_border_position, state: STATE_STILL, auto_control: auto_control }));
+            ws.send(JSON.stringify({ state: STATE_STILL, auto_control: auto_control }));
         }
 
         move_forward_button.addEventListener('mousedown', function () {
-            ws.send(JSON.stringify({ last_border_position: last_border_position, state: STATE_OVERIDE_MOVE_FORWARD, auto_control: auto_control }));
+            ws.send(JSON.stringify({ state: STATE_OVERIDE_MOVE_FORWARD, auto_control: auto_control }));
         }, false);
 
         move_forward_button.addEventListener('mouseup', stop_motor, false);
 
         turn_left_button.addEventListener('mousedown', function () {
-            ws.send(JSON.stringify({ last_border_position: last_border_position, state: STATE_OVERIDE_TURN_LEFT, auto_control: auto_control }));
+            ws.send(JSON.stringify({ state: STATE_OVERIDE_TURN_LEFT, auto_control: auto_control }));
         }, false);
 
         turn_left_button.addEventListener('mouseup', stop_motor, false);
 
         turn_right_button.addEventListener('mousedown', function () {
-            ws.send(JSON.stringify({ last_border_position: last_border_position, state: STATE_OVERIDE_TURN_RIGHT, auto_control: auto_control }));
+            ws.send(JSON.stringify({ state: STATE_OVERIDE_TURN_RIGHT, auto_control: auto_control }));
         }, false);
 
         turn_right_button.addEventListener('mouseup', stop_motor, false);
 
         move_backward_button.addEventListener('mousedown', function () {
-            ws.send(JSON.stringify({ last_border_position: last_border_position, state: STATE_OVERIDE_MOVE_BACKWARD, auto_control: auto_control }));
+            ws.send(JSON.stringify({ state: STATE_OVERIDE_MOVE_BACKWARD, auto_control: auto_control }));
         }, false);
 
         move_backward_button.addEventListener('mouseup', stop_motor, false);
