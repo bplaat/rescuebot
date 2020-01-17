@@ -441,13 +441,14 @@ WebSocketsServer websocket(81);
 StaticJsonDocument<256> doc;
 
 // The websocket event handler function
-void websocket_event(uint8_t num, WStype_t type, uint8_t *payload, size_t length){
+void websocket_event(uint8_t num, WStype_t type, const uint8_t *payload, size_t length){
     if (type == WStype_CONNECTED) {
         // Send data to new client
         String client_message;
         doc["rescuebot_name"] = rescuebot_name;
-        doc["auto_control"] = auto_control;
         doc["state"] = state;
+        doc["last_border_position"] = last_border_position;
+        doc["auto_control"] = auto_control;
         serializeJson(doc, client_message);
         websocket.sendTXT(num, client_message);
     }
@@ -455,8 +456,9 @@ void websocket_event(uint8_t num, WStype_t type, uint8_t *payload, size_t length
     if (type == WStype_TEXT) {
         // Update data from json message
         deserializeJson(doc, payload, length);
-        auto_control = doc["auto_control"];
         state = doc["state"];
+        last_border_position = doc["last_border_position"];
+        auto_control = doc["auto_control"];
 
         // Send change message to all clients
         websocket.broadcastTXT(payload, length);

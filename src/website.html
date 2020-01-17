@@ -10,7 +10,8 @@
         .logo{padding:16px;font-size:20px;font-weight:bold}
         .flex{flex:1}.flex-horizontal{display:flex}.flex-vertical{display:flex;flex-direction:column}
         .data{color:#444;font-family:'Courier New',Courier,monospace;text-align:center;line-height:64px;}
-        button{background-color:#ddd}
+        button{color:#111;background-color:#ddd}
+        button:disabled{color:#777;background-color:#bbb}
         .active{color:#fff;background-color:#f0f;}
         .auto-control-button-on{color:#fff;background-color:#6b6}
         .auto-control-button-off{color:#fff;background-color:#e22}
@@ -82,10 +83,10 @@
             '\u2193 Overide moving backward'
         ];
 
-        var auto_control = false;
+        var auto_control;
 
         var rescuebot_name_label = document.getElementById('rescuebot-name-label');
-        var state_label = document.getElementById('state-text-label');
+        var state_label = document.getElementById('state-label');
         var last_border_position_label = document.getElementById('last-border-position-label');
 
         var auto_control_button = document.getElementById('auto-control-button');
@@ -99,6 +100,8 @@
         ws.onmessage = function (event) {
             try {
                 var data = JSON.parse(event.data);
+                console.log(state);
+                console.log(last_border_position);
                 console.log(data);
 
                 if (data.rescuebot_name != undefined && data.rescuebot_name != rescuebot_name) {
@@ -174,45 +177,34 @@
             alert('The connection with the RescueBot is lost!');
         };
 
-        function send_data () {
-            ws.send(JSON.stringify({ auto_control: auto_control, state: state }));
-        }
-
         auto_control_button.addEventListener('click', function () {
-            auto_control = !auto_control;
-            state = auto_control ? STATE_MOVE_FORWARD : STATE_STILL;
-            send_data();
+            ws.send(JSON.stringify({ last_border_position: last_border_position, state: !auto_control ? STATE_MOVE_FORWARD : STATE_STILL, auto_control: !auto_control }));
         }, false);
 
         function stop_motor () {
-            state = STATE_STILL;
-            send_data();
+            ws.send(JSON.stringify({ last_border_position: last_border_position, state: STATE_STILL, auto_control: auto_control }));
         }
 
         move_forward_button.addEventListener('mousedown', function () {
-            state = STATE_OVERIDE_MOVE_FORWARD;
-            send_data();
+            ws.send(JSON.stringify({ last_border_position: last_border_position, state: STATE_OVERIDE_MOVE_FORWARD, auto_control: auto_control }));
         }, false);
 
         move_forward_button.addEventListener('mouseup', stop_motor, false);
 
         turn_left_button.addEventListener('mousedown', function () {
-            state = STATE_OVERIDE_TURN_LEFT;
-            send_data();
+            ws.send(JSON.stringify({ last_border_position: last_border_position, state: STATE_OVERIDE_TURN_LEFT, auto_control: auto_control }));
         }, false);
 
         turn_left_button.addEventListener('mouseup', stop_motor, false);
 
         turn_right_button.addEventListener('mousedown', function () {
-            state = STATE_OVERIDE_TURN_RIGHT;
-            send_data();
+            ws.send(JSON.stringify({ last_border_position: last_border_position, state: STATE_OVERIDE_TURN_RIGHT, auto_control: auto_control }));
         }, false);
 
         turn_right_button.addEventListener('mouseup', stop_motor, false);
 
         move_backward_button.addEventListener('mousedown', function () {
-            state = STATE_OVERIDE_MOVE_BACKWARD;
-            send_data();
+            ws.send(JSON.stringify({ last_border_position: last_border_position, state: STATE_OVERIDE_MOVE_BACKWARD, auto_control: auto_control }));
         }, false);
 
         move_backward_button.addEventListener('mouseup', stop_motor, false);
