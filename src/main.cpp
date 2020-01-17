@@ -79,17 +79,6 @@ void motor_move_forward() {
 
 // Turns the car to the left
 void motor_turn_left() {
-    digitalWrite(MOTOR_LEFT_FORWARD_PIN, LOW);
-    digitalWrite(MOTOR_LEFT_BACKWARD_PIN, HIGH);
-    digitalWrite(MOTOR_LEFT_ENABLE_PIN, HIGH);
-
-    digitalWrite(MOTOR_RIGHT_FORWARD_PIN, HIGH);
-    digitalWrite(MOTOR_RIGHT_BACKWARD_PIN, LOW);
-    digitalWrite(MOTOR_RIGHT_ENABLE_PIN, HIGH);
-}
-
-// Turns the cars to the right
-void motor_turn_right() {
     digitalWrite(MOTOR_LEFT_FORWARD_PIN, HIGH);
     digitalWrite(MOTOR_LEFT_BACKWARD_PIN, LOW);
     digitalWrite(MOTOR_LEFT_ENABLE_PIN, HIGH);
@@ -99,7 +88,18 @@ void motor_turn_right() {
     digitalWrite(MOTOR_RIGHT_ENABLE_PIN, HIGH);
 }
 
-// Moves the car backwards
+// Turns the cars to the right
+void motor_turn_right() {
+    digitalWrite(MOTOR_LEFT_FORWARD_PIN, LOW);
+    digitalWrite(MOTOR_LEFT_BACKWARD_PIN, HIGH);
+    digitalWrite(MOTOR_LEFT_ENABLE_PIN, HIGH);
+
+    digitalWrite(MOTOR_RIGHT_FORWARD_PIN, HIGH);
+    digitalWrite(MOTOR_RIGHT_BACKWARD_PIN, LOW);
+    digitalWrite(MOTOR_RIGHT_ENABLE_PIN, HIGH);
+}
+
+// Moves the car backward
 void motor_move_backward() {
     digitalWrite(MOTOR_LEFT_FORWARD_PIN, LOW);
     digitalWrite(MOTOR_LEFT_BACKWARD_PIN, HIGH);
@@ -126,11 +126,10 @@ void motor_stop() {
 // #############################################################################
 
 // Variables to hold the last border position
-#define BORDER_UNKOWN 0
-#define BORDER_LEFT 1
-#define BORDER_RIGHT 2
+#define BORDER_LEFT 0
+#define BORDER_RIGHT 1
 
-uint8_t last_border_position = BORDER_UNKOWN;
+uint8_t last_border_position = BORDER_LEFT;
 
 // The different states
 #define STATE_STILL 0
@@ -156,6 +155,10 @@ uint8_t last_border_position = BORDER_UNKOWN;
 #define STATE_OVERIDE_MOVE_BACKWARD 16
 
 #define STATE_TUNNEL_FORWARD 17
+
+#define STATE_AVOID_FRONT_BORDER_BACKWARD 18
+#define STATE_AVOID_FRONT_BORDER_LEFT 19
+#define STATE_AVOID_FRONT_BORDER_RIGHT 20
 
 // The state variables
 bool auto_control = false;
@@ -186,6 +189,19 @@ void set_state(uint8_t new_state) {
     if (state == STATE_AVOID_RIGHT_BORDER) {
         last_border_position = BORDER_RIGHT;
         motor_turn_left();
+    }
+
+    // Avoid front border
+    if (state == STATE_AVOID_FRONT_BORDER_BACKWARD) {
+        motor_move_backward();
+    }
+
+    if (state == STATE_AVOID_FRONT_BORDER_LEFT) {
+        motor_turn_left();
+    }
+
+    if (state == STATE_AVOID_FRONT_BORDER_RIGHT) {
+        motor_turn_right();
     }
 
     // Avoid objects
@@ -253,28 +269,55 @@ void set_state(uint8_t new_state) {
 void update_state() {
     uint32_t time_passed = millis() - state_time;
 
-    // Tunnel protocol
-    if (distance_to_left < 20 && distance_to_right < 20) {
-        set_state(STATE_TUNNEL_FORWARD);
-        return;
+    // // Tunnel protocol
+    // if (distance_to_left < 20 && distance_to_right < 20) {
+    //     set_state(STATE_TUNNEL_FORWARD);
+    //     return;
+    // }
+
+    if (
+        state != STATE_AVOID_FRONT_BORDER_BACKWARD &&
+        state != STATE_AVOID_FRONT_BORDER_LEFT &&
+        state != STATE_AVOID_FRONT_BORDER_RIGHT
+    ) {
+        // Avoid left border
+        if (ir_left == PROTOCOL_BORDER_FOUND) {
+            set_state(STATE_AVOID_LEFT_BORDER);
+        }
+
+        if (state == STATE_AVOID_LEFT_BORDER && ir_left == PROTOCOL_BORDER_NOT_FOUND) {
+            set_state(STATE_MOVE_FORWARD);
+        }
+
+        // Avoid right border
+        if (ir_right == PROTOCOL_BORDER_FOUND) {
+            set_state(STATE_AVOID_RIGHT_BORDER);
+        }
+
+        if (state == STATE_AVOID_RIGHT_BORDER && ir_right == PROTOCOL_BORDER_NOT_FOUND) {
+            set_state(STATE_MOVE_FORWARD);
+        }
+
+        // Avoid front border
+        if (ir_left == PROTOCOL_BORDER_FOUND && ir_right == PROTOCOL_BORDER_FOUND) {
+            set_state(STATE_AVOID_FRONT_BORDER_BACKWARD);
+        }
     }
 
-    // Avoid left border
-    if (ir_left == PROTOCOL_BORDER_FOUND) {
-        set_state(STATE_AVOID_LEFT_BORDER);
+    if (state == STATE_AVOID_FRONT_BORDER_BACKWARD && time_passed > 1000) {
+        if (last_border_position == BORDER_LEFT) {
+            set_state(STATE_AVOID_FRONT_BORDER_RIGHT);
+        }
+        if (last_border_position == BORDER_RIGHT) {
+            set_state(STATE_AVOID_FRONT_BORDER_LEFT);
+        }
     }
 
-
-    if (state == STATE_AVOID_LEFT_BORDER && ir_left == HIGH) {
+    if (state == STATE_AVOID_FRONT_BORDER_LEFT && time_passed > 1000) {
         set_state(STATE_MOVE_FORWARD);
     }
 
-    // Avoid right border
-    if (ir_right == PROTOCOL_BORDER_FOUND) {
-        set_state(STATE_AVOID_RIGHT_BORDER);
-    }
-
-    if (state == STATE_AVOID_RIGHT_BORDER && ir_right == HIGH) {
+    if (state == STATE_AVOID_FRONT_BORDER_RIGHT && time_passed > 1000) {
         set_state(STATE_MOVE_FORWARD);
     }
 
@@ -317,27 +360,27 @@ void update_state() {
         set_state(STATE_MOVE_FORWARD);
     }
 
-    // Avoid cliffs
-    if (distance_to_ground > 2) {
-        set_state(STATE_AVOID_CLIFF_MOVE_BACKWARD);
-    }
+    // // Avoid cliffs
+    // if (distance_to_ground > 10) {
+    //     set_state(STATE_AVOID_CLIFF_MOVE_BACKWARD);
+    // }
 
-    if (state == STATE_AVOID_CLIFF_MOVE_BACKWARD && time_passed > 1000) {
-        if (last_border_position == BORDER_LEFT) {
-            set_state(STATE_AVOID_CLIFF_TURN_RIGHT);
-        }
-        if (last_border_position == BORDER_RIGHT) {
-            set_state(STATE_AVOID_CLIFF_TURN_RIGHT);
-        }
-    }
+    // if (state == STATE_AVOID_CLIFF_MOVE_BACKWARD && time_passed > 1000) {
+    //     if (last_border_position == BORDER_LEFT) {
+    //         set_state(STATE_AVOID_CLIFF_TURN_RIGHT);
+    //     }
+    //     if (last_border_position == BORDER_RIGHT) {
+    //         set_state(STATE_AVOID_CLIFF_TURN_RIGHT);
+    //     }
+    // }
 
-    if (state == STATE_AVOID_CLIFF_TURN_LEFT && time_passed > 1000) {
-        set_state(STATE_MOVE_FORWARD);
-    }
+    // if (state == STATE_AVOID_CLIFF_TURN_LEFT && time_passed > 1000) {
+    //     set_state(STATE_MOVE_FORWARD);
+    // }
 
-    if (state == STATE_AVOID_CLIFF_TURN_RIGHT && time_passed > 1000) {
-        set_state(STATE_MOVE_FORWARD);
-    }
+    // if (state == STATE_AVOID_CLIFF_TURN_RIGHT && time_passed > 1000) {
+    //     set_state(STATE_MOVE_FORWARD);
+    // }
 }
 
 // #############################################################################
