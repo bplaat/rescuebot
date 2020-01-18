@@ -66,21 +66,19 @@
             '\u2192 Avoid left border',
             '\u2190 Avoid right border',
 
-            '\u2193 Avoid object by moving backward',
-            '\u2190 Avoid object by turning left',
-            '\u2192 Avoid object by turning right',
-            '\u2191 Avoid object by moving forward',
-            '\u2190 Avoid object by turning left',
-            '\u2192 Avoid object by turning right',
+            '\u2193 Avoid front border backward',
+            '\u2190 Avoid front border turn left',
+            '\u2192 Avoid front border turn right',
 
-            '\u2193 Avoid cliff by moving backward',
-            '\u2190 Avoid cliff by turning left',
-            '\u2192 Avoid cliff by turning right',
+            '\u2190 Avoid object turn left',
+            '\u2192 Avoid object turn right',
 
             '\u2191 Overide moving forward',
             '\u2190 Overide turning left',
             '\u2192 Overide turning right',
-            '\u2193 Overide moving backward'
+            '\u2193 Overide moving backward',
+
+            '# Magnet found'
         ];
 
         var auto_control;
@@ -100,9 +98,6 @@
         ws.onmessage = function (event) {
             try {
                 var data = JSON.parse(event.data);
-                console.log(state);
-                console.log(last_border_position);
-                console.log(data);
 
                 if (data.rescuebot_name != undefined && data.rescuebot_name != rescuebot_name) {
                     rescuebot_name = data.rescuebot_name;

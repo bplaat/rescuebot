@@ -15,9 +15,6 @@
 #define ACTIVATE_HALL_SENSOR
 #define HALL_SENSOR_PIN D1
 
-// Define function before usage in state code
-void broadcast_new_state();
-
 // #############################################################################
 // ############################# I2C COMMUNICATION #############################
 // #############################################################################
@@ -62,7 +59,7 @@ void i2c_init() {
 }
 
 // #############################################################################
-// #################################### STATE ##################################
+// ############################### MOTOR PINS ##################################
 // #############################################################################
 
 // The motor pins
@@ -144,6 +141,9 @@ void motor_stop() {
 // #################################### STATE ##################################
 // #############################################################################
 
+// Define function before usage in state code
+void broadcast_new_state();
+
 // Variables to hold the last border position
 #define BORDER_LEFT 0
 #define BORDER_RIGHT 1
@@ -157,27 +157,19 @@ uint8_t last_border_position = BORDER_LEFT;
 #define STATE_AVOID_LEFT_BORDER 2
 #define STATE_AVOID_RIGHT_BORDER 3
 
-#define STATE_AVOID_OBJECT_MOVE_BACKWARD 4
-#define STATE_AVOID_OBJECT_TURN_LEFT_FIRST 5
-#define STATE_AVOID_OBJECT_TURN_RIGHT_FIRST 6
-#define STATE_AVOID_OBJECT_MOVE_FORWARD 7
-#define STATE_AVOID_OBJECT_TURN_LEFT_SECOND 8
-#define STATE_AVOID_OBJECT_TURN_RIGHT_SECOND 9
+#define STATE_AVOID_FRONT_BORDER_MOVE_BACKWARD 4
+#define STATE_AVOID_FRONT_BORDER_TURN_LEFT 5
+#define STATE_AVOID_FRONT_BORDER_TURN_RIGHT 6
 
-#define STATE_AVOID_CLIFF_MOVE_BACKWARD 10
-#define STATE_AVOID_CLIFF_TURN_LEFT 11
-#define STATE_AVOID_CLIFF_TURN_RIGHT 12
+#define STATE_AVOID_OBJECT_TURN_LEFT 7
+#define STATE_AVOID_OBJECT_TURN_RIGHT 8
 
-#define STATE_OVERIDE_MOVE_FORWARD 13
-#define STATE_OVERIDE_TURN_LEFT 14
-#define STATE_OVERIDE_TURN_RIGHT 15
-#define STATE_OVERIDE_MOVE_BACKWARD 16
+#define STATE_OVERIDE_MOVE_FORWARD 9
+#define STATE_OVERIDE_TURN_LEFT 10
+#define STATE_OVERIDE_TURN_RIGHT 11
+#define STATE_OVERIDE_MOVE_BACKWARD 12
 
-#define STATE_TUNNEL_FORWARD 17
-
-#define STATE_AVOID_FRONT_BORDER_BACKWARD 18
-#define STATE_AVOID_FRONT_BORDER_LEFT 19
-#define STATE_AVOID_FRONT_BORDER_RIGHT 20
+#define STATE_MAGNET_FOUND 13
 
 // The state variables
 bool auto_control = false;
@@ -211,54 +203,25 @@ void set_state(uint8_t new_state, bool broadcast_to_clients) {
             motor_turn_left();
         }
 
-        // Avoid front border
-        if (state == STATE_AVOID_FRONT_BORDER_BACKWARD) {
+        // Avoid front border / cliff
+        if (state == STATE_AVOID_FRONT_BORDER_MOVE_BACKWARD) {
             motor_move_backward();
         }
 
-        if (state == STATE_AVOID_FRONT_BORDER_LEFT) {
+        if (state == STATE_AVOID_FRONT_BORDER_TURN_LEFT) {
             motor_turn_left();
         }
 
-        if (state == STATE_AVOID_FRONT_BORDER_RIGHT) {
+        if (state == STATE_AVOID_FRONT_BORDER_TURN_RIGHT) {
             motor_turn_right();
         }
 
         // Avoid objects
-        if (state == STATE_AVOID_OBJECT_MOVE_BACKWARD) {
-            motor_move_backward();
-        }
-
-        if (state == STATE_AVOID_OBJECT_TURN_LEFT_FIRST) {
+        if (state == STATE_AVOID_OBJECT_TURN_LEFT) {
             motor_turn_left();
         }
 
-        if (state == STATE_AVOID_OBJECT_TURN_RIGHT_FIRST) {
-            motor_turn_right();
-        }
-
-        if (state == STATE_AVOID_OBJECT_MOVE_FORWARD) {
-            motor_move_forward();
-        }
-
-        if (state == STATE_AVOID_OBJECT_TURN_LEFT_SECOND) {
-            motor_turn_left();
-        }
-
-        if (state == STATE_AVOID_OBJECT_TURN_RIGHT_SECOND) {
-            motor_turn_right();
-        }
-
-        // Avoid cliffs
-        if (state == STATE_AVOID_CLIFF_MOVE_BACKWARD) {
-            motor_move_backward();
-        }
-
-        if (state == STATE_AVOID_CLIFF_TURN_LEFT) {
-            motor_turn_left();
-        }
-
-        if (state == STATE_AVOID_CLIFF_TURN_RIGHT) {
+        if (state == STATE_AVOID_OBJECT_TURN_RIGHT) {
             motor_turn_right();
         }
 
@@ -279,9 +242,9 @@ void set_state(uint8_t new_state, bool broadcast_to_clients) {
             motor_move_backward();
         }
 
-        // Tunnel protocol
-        if (state == STATE_TUNNEL_FORWARD) {
-            motor_move_forward();
+        // Magnet found
+        if (state == STATE_MAGNET_FOUND) {
+            motor_stop();
         }
 
         // Broadcast new state to clients
@@ -296,118 +259,77 @@ void update_state() {
     // Calculate time passsed since last state change
     uint32_t time_passed = millis() - state_time;
 
-    /* Tunnel protocol
-    if (distance_to_left < 20 && distance_to_right < 20) {
-        set_state(STATE_TUNNEL_FORWARD, true);
-        return;
-    } */
+    #ifdef ACTIVATE_HALL_SENSOR
+        if (digitalRead(HALL_SENSOR_PIN) == HIGH) {
+            set_state(STATE_MAGNET_FOUND, true);
+        }
 
-    if (
-        state != STATE_AVOID_FRONT_BORDER_BACKWARD &&
-        state != STATE_AVOID_FRONT_BORDER_LEFT &&
-        state != STATE_AVOID_FRONT_BORDER_RIGHT
-    ) {
-        // Avoid left border
-        if (ir_left == PROTOCOL_BORDER_FOUND) {
+        else {
+    #endif
+
+    if (distance_to_left < 20 && distance_to_right < 20) {
+        // Tunnel mode
+    }
+
+    else {
+        if ((ir_left == PROTOCOL_BORDER_FOUND && ir_right == PROTOCOL_BORDER_FOUND) || distance_to_ground > 10) {
+            set_state(STATE_AVOID_FRONT_BORDER_MOVE_BACKWARD, true);
+        }
+
+        else if (ir_left == PROTOCOL_BORDER_FOUND) {
             set_state(STATE_AVOID_LEFT_BORDER, true);
         }
 
-        if (state == STATE_AVOID_LEFT_BORDER && ir_left == PROTOCOL_BORDER_NOT_FOUND) {
-            set_state(STATE_MOVE_FORWARD, true);
-        }
-
-        // Avoid right border
-        if (ir_right == PROTOCOL_BORDER_FOUND) {
+        else if (ir_right == PROTOCOL_BORDER_FOUND) {
             set_state(STATE_AVOID_RIGHT_BORDER, true);
         }
 
-        if (state == STATE_AVOID_RIGHT_BORDER && ir_right == PROTOCOL_BORDER_NOT_FOUND) {
-            set_state(STATE_MOVE_FORWARD, true);
-        }
-
-        // Avoid front border
-        if (ir_left == PROTOCOL_BORDER_FOUND && ir_right == PROTOCOL_BORDER_FOUND) {
-            set_state(STATE_AVOID_FRONT_BORDER_BACKWARD, true);
+        else if (distance_to_object < 15) {
+            if (last_border_position == BORDER_LEFT) {
+                set_state(STATE_AVOID_OBJECT_TURN_RIGHT, true);
+            }
+            if (last_border_position == BORDER_RIGHT) {
+                set_state(STATE_AVOID_OBJECT_TURN_LEFT, true);
+            }
         }
     }
 
-    if (state == STATE_AVOID_FRONT_BORDER_BACKWARD && time_passed > 1000) {
+    if (state == STATE_AVOID_FRONT_BORDER_MOVE_BACKWARD && time_passed > 1000) {
         if (last_border_position == BORDER_LEFT) {
-            set_state(STATE_AVOID_FRONT_BORDER_RIGHT, true);
+            set_state(STATE_AVOID_FRONT_BORDER_TURN_RIGHT, true);
         }
         if (last_border_position == BORDER_RIGHT) {
-            set_state(STATE_AVOID_FRONT_BORDER_LEFT, true);
+            set_state(STATE_AVOID_FRONT_BORDER_TURN_LEFT, true);
         }
     }
 
-    if (state == STATE_AVOID_FRONT_BORDER_LEFT && time_passed > 1000) {
+    if (state == STATE_AVOID_FRONT_BORDER_TURN_RIGHT && time_passed > 1000) {
         set_state(STATE_MOVE_FORWARD, true);
     }
 
-    if (state == STATE_AVOID_FRONT_BORDER_RIGHT && time_passed > 1000) {
+    if (state == STATE_AVOID_FRONT_BORDER_TURN_LEFT && time_passed > 1000) {
         set_state(STATE_MOVE_FORWARD, true);
     }
 
-    // Avoid objects
-    if (distance_to_object < 20) {
-        set_state(STATE_AVOID_OBJECT_MOVE_BACKWARD, true);
-    }
-
-    if (state == STATE_AVOID_OBJECT_MOVE_BACKWARD && time_passed > 1000) {
-        if (last_border_position == BORDER_LEFT) {
-            set_state(STATE_AVOID_OBJECT_TURN_RIGHT_FIRST, true);
-        }
-        if (last_border_position == BORDER_RIGHT) {
-            set_state(STATE_AVOID_OBJECT_TURN_LEFT_FIRST, true);
-        }
-    }
-
-    if (state == STATE_AVOID_OBJECT_TURN_LEFT_FIRST && time_passed > 1000) {
-        set_state(STATE_AVOID_OBJECT_MOVE_FORWARD, true);
-    }
-
-    if (state == STATE_AVOID_OBJECT_TURN_RIGHT_FIRST && time_passed > 1000) {
-        set_state(STATE_AVOID_OBJECT_MOVE_FORWARD, true);
-    }
-
-    if (state == STATE_AVOID_OBJECT_MOVE_FORWARD && time_passed > 1000) {
-        if (last_border_position == BORDER_LEFT) {
-            set_state(STATE_AVOID_OBJECT_TURN_LEFT_SECOND, true);
-        }
-        if (last_border_position == BORDER_RIGHT) {
-            set_state(STATE_AVOID_OBJECT_TURN_RIGHT_SECOND, true);
-        }
-    }
-
-    if (state == STATE_AVOID_OBJECT_TURN_LEFT_SECOND && time_passed > 1000) {
+    if (state == STATE_AVOID_LEFT_BORDER && ir_left == PROTOCOL_BORDER_NOT_FOUND) {
         set_state(STATE_MOVE_FORWARD, true);
     }
 
-    if (state == STATE_AVOID_OBJECT_TURN_RIGHT_SECOND && time_passed > 1000) {
+    if (state == STATE_AVOID_RIGHT_BORDER && ir_left == PROTOCOL_BORDER_NOT_FOUND) {
         set_state(STATE_MOVE_FORWARD, true);
     }
 
-    /* Avoid cliffs
-    if (distance_to_ground > 10) {
-        set_state(STATE_AVOID_CLIFF_MOVE_BACKWARD, true);
+    if (state == STATE_AVOID_OBJECT_TURN_LEFT && distance_to_object < 15) {
+        set_state(STATE_MOVE_FORWARD, true);
     }
 
-    if (state == STATE_AVOID_CLIFF_MOVE_BACKWARD && time_passed > 1000) {
-        if (last_border_position == BORDER_LEFT) {
-            set_state(STATE_AVOID_CLIFF_TURN_RIGHT, true);
+    if (state == STATE_AVOID_OBJECT_TURN_RIGHT && distance_to_object < 15) {
+        set_state(STATE_MOVE_FORWARD, true);
+    }
+
+    #ifdef ACTIVATE_HALL_SENSOR
         }
-        if (last_border_position == BORDER_RIGHT) {
-            set_state(STATE_AVOID_CLIFF_TURN_RIGHT, true);
-        }
-    }
-
-    if (state == STATE_AVOID_CLIFF_TURN_LEFT && time_passed > 1000) {
-        set_state(STATE_MOVE_FORWARD, true);
-    }
-
-    if (state == STATE_AVOID_CLIFF_TURN_RIGHT && time_passed > 1000) {
-        set_state(STATE_MOVE_FORWARD, true);
-    }*/
+    #endif
 }
 
 // #############################################################################
