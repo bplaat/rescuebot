@@ -178,7 +178,7 @@ uint32_t state_time = millis();
 
 // A function that sets the state and reflects it to the motors
 void set_state(uint8_t new_state, bool broadcast_to_clients) {
-        if (new_state != state) {
+    if (new_state != state) {
         state = new_state;
         state_time = millis();
 
@@ -259,6 +259,8 @@ void update_state() {
     // Calculate time passsed since last state change
     uint32_t time_passed = millis() - state_time;
 
+    // Magent -> Tunnel -> Border -> Object
+
     #ifdef ACTIVATE_HALL_SENSOR
         if (digitalRead(HALL_SENSOR_PIN) == HIGH) {
             set_state(STATE_MAGNET_FOUND, true);
@@ -284,12 +286,14 @@ void update_state() {
             set_state(STATE_AVOID_RIGHT_BORDER, true);
         }
 
-        else if (distance_to_object < 15) {
-            if (last_border_position == BORDER_LEFT) {
-                set_state(STATE_AVOID_OBJECT_TURN_RIGHT, true);
-            }
-            if (last_border_position == BORDER_RIGHT) {
-                set_state(STATE_AVOID_OBJECT_TURN_LEFT, true);
+        else {
+            if (distance_to_object < 15) {
+                if (last_border_position == BORDER_LEFT) {
+                    set_state(STATE_AVOID_OBJECT_TURN_RIGHT, true);
+                }
+                if (last_border_position == BORDER_RIGHT) {
+                    set_state(STATE_AVOID_OBJECT_TURN_LEFT, true);
+                }
             }
         }
     }
@@ -319,11 +323,11 @@ void update_state() {
         set_state(STATE_MOVE_FORWARD, true);
     }
 
-    if (state == STATE_AVOID_OBJECT_TURN_LEFT && distance_to_object < 15) {
+    if (state == STATE_AVOID_OBJECT_TURN_LEFT && distance_to_object > 15) {
         set_state(STATE_MOVE_FORWARD, true);
     }
 
-    if (state == STATE_AVOID_OBJECT_TURN_RIGHT && distance_to_object < 15) {
+    if (state == STATE_AVOID_OBJECT_TURN_RIGHT && distance_to_object > 15) {
         set_state(STATE_MOVE_FORWARD, true);
     }
 
