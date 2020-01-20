@@ -12,7 +12,7 @@
 // #define DEBUG
 
 // Hall sensor defines
-#define ACTIVATE_HALL_SENSOR
+// #define ACTIVATE_HALL_SENSOR
 #define HALL_SENSOR_PIN D1
 
 // #############################################################################
@@ -21,7 +21,7 @@
 
 // The i2c variables
 #define I2C_ADDRESS 10
-#define REQUEST_TIMEOUT 500
+#define REQUEST_TIMEOUT 250
 #define PROTOCOL_REQUEST_MESSAGE_LENGTH 6
 #define PROTOCOL_BORDER_NOT_FOUND 0
 #define PROTOCOL_BORDER_FOUND 1
@@ -171,6 +171,8 @@ uint8_t last_border_position = BORDER_LEFT;
 
 #define STATE_MAGNET_FOUND 13
 
+#define STATE_TUNNEL_FORWARD 14
+
 // The state variables
 bool auto_control = false;
 uint8_t state = STATE_MOVE_FORWARD;
@@ -247,6 +249,11 @@ void set_state(uint8_t new_state, bool broadcast_to_clients) {
             motor_stop();
         }
 
+        // Tunnel forward
+        if (state == STATE_TUNNEL_FORWARD) {
+            motor_move_forward();
+        }
+
         // Broadcast new state to clients
         if (broadcast_to_clients) {
             broadcast_new_state();
@@ -269,8 +276,8 @@ void update_state() {
         else {
     #endif
 
-    if (distance_to_left < 20 && distance_to_right < 20) {
-        // Tunnel mode
+    if (distance_to_left < 25 && distance_to_right < 25) {
+        set_state(STATE_TUNNEL_FORWARD, true);
     }
 
     else {
@@ -287,7 +294,7 @@ void update_state() {
         }
 
         else {
-            if (distance_to_object < 15) {
+            if (distance_to_object < 20) {
                 if (last_border_position == BORDER_LEFT) {
                     set_state(STATE_AVOID_OBJECT_TURN_RIGHT, true);
                 }
@@ -298,7 +305,11 @@ void update_state() {
         }
     }
 
-    if (state == STATE_AVOID_FRONT_BORDER_MOVE_BACKWARD && time_passed > 1000) {
+    if (state == STATE_TUNNEL_FORWARD && distance_to_left > 25 && distance_to_right > 25) {
+        set_state(STATE_MOVE_FORWARD, true);
+    }
+
+    if (state == STATE_AVOID_FRONT_BORDER_MOVE_BACKWARD && time_passed > 2500) {
         if (last_border_position == BORDER_LEFT) {
             set_state(STATE_AVOID_FRONT_BORDER_TURN_RIGHT, true);
         }
@@ -307,11 +318,11 @@ void update_state() {
         }
     }
 
-    if (state == STATE_AVOID_FRONT_BORDER_TURN_RIGHT && time_passed > 1000) {
+    if (state == STATE_AVOID_FRONT_BORDER_TURN_RIGHT && time_passed > 2500) {
         set_state(STATE_MOVE_FORWARD, true);
     }
 
-    if (state == STATE_AVOID_FRONT_BORDER_TURN_LEFT && time_passed > 1000) {
+    if (state == STATE_AVOID_FRONT_BORDER_TURN_LEFT && time_passed > 2500) {
         set_state(STATE_MOVE_FORWARD, true);
     }
 
@@ -323,11 +334,11 @@ void update_state() {
         set_state(STATE_MOVE_FORWARD, true);
     }
 
-    if (state == STATE_AVOID_OBJECT_TURN_LEFT && distance_to_object > 15) {
+    if (state == STATE_AVOID_OBJECT_TURN_LEFT && time_passed > 2500) {
         set_state(STATE_MOVE_FORWARD, true);
     }
 
-    if (state == STATE_AVOID_OBJECT_TURN_RIGHT && distance_to_object > 15) {
+    if (state == STATE_AVOID_OBJECT_TURN_RIGHT && time_passed > 2500) {
         set_state(STATE_MOVE_FORWARD, true);
     }
 
