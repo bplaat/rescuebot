@@ -46,7 +46,8 @@ void update_data_from_slave() {
         ir_right = Wire.read();
 
         #ifdef DEBUG
-            printf("distance_to_object: %d, distance_to_left: %d, distance_to_right: %d, distance_to_ground: %d, ir_left: %d, ir_right: %d\n", distance_to_object, distance_to_left, distance_to_right, distance_to_ground, ir_left, ir_right);
+            printf("distance_to_object: %d, distance_to_left: %d, distance_to_right: %d, distance_to_ground: %d, ir_left: %d, ir_right: %d\n",
+                distance_to_object, distance_to_left, distance_to_right, distance_to_ground, ir_left, ir_right);
         #endif
     }
 }
@@ -269,6 +270,7 @@ void update_state() {
     // Magent -> Tunnel -> Border -> Object
 
     #ifdef ACTIVATE_HALL_SENSOR
+        // Magnet detection
         if (digitalRead(HALL_SENSOR_PIN) == HIGH) {
             set_state(STATE_MAGNET_FOUND, true);
         }
@@ -276,24 +278,29 @@ void update_state() {
         else {
     #endif
 
+    // Tunnel dection
     if (distance_to_left < 25 && distance_to_right < 25) {
         set_state(STATE_TUNNEL_FORWARD, true);
     }
 
     else {
+        // Front border / cliff detection
         if ((ir_left == PROTOCOL_BORDER_FOUND && ir_right == PROTOCOL_BORDER_FOUND) || distance_to_ground > 10) {
             set_state(STATE_AVOID_FRONT_BORDER_MOVE_BACKWARD, true);
         }
 
+        // Left border detection
         else if (ir_left == PROTOCOL_BORDER_FOUND) {
             set_state(STATE_AVOID_LEFT_BORDER, true);
         }
 
+        // Right border detection
         else if (ir_right == PROTOCOL_BORDER_FOUND) {
             set_state(STATE_AVOID_RIGHT_BORDER, true);
         }
 
         else {
+            // Object dection
             if (distance_to_object < 20) {
                 if (last_border_position == BORDER_LEFT) {
                     set_state(STATE_AVOID_OBJECT_TURN_RIGHT, true);
@@ -305,10 +312,12 @@ void update_state() {
         }
     }
 
+    // Tunnel deactivivation
     if (state == STATE_TUNNEL_FORWARD && distance_to_left > 25 && distance_to_right > 25) {
         set_state(STATE_MOVE_FORWARD, true);
     }
 
+    // Front border deactivivation
     if (state == STATE_AVOID_FRONT_BORDER_MOVE_BACKWARD && time_passed > 2500) {
         if (last_border_position == BORDER_LEFT) {
             set_state(STATE_AVOID_FRONT_BORDER_TURN_RIGHT, true);
@@ -326,14 +335,17 @@ void update_state() {
         set_state(STATE_MOVE_FORWARD, true);
     }
 
+    // Left border deactivivation
     if (state == STATE_AVOID_LEFT_BORDER && ir_left == PROTOCOL_BORDER_NOT_FOUND) {
         set_state(STATE_MOVE_FORWARD, true);
     }
 
+    // Right border deactivivation
     if (state == STATE_AVOID_RIGHT_BORDER && ir_left == PROTOCOL_BORDER_NOT_FOUND) {
         set_state(STATE_MOVE_FORWARD, true);
     }
 
+    // Object deactivivation
     if (state == STATE_AVOID_OBJECT_TURN_LEFT && time_passed > 2500) {
         set_state(STATE_MOVE_FORWARD, true);
     }
