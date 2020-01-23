@@ -8,13 +8,6 @@
 #include "config.hpp"
 #include "website.hpp"
 
-// The serial debug flag
-// #define DEBUG
-
-// Hall sensor defines
- #define ACTIVATE_HALL_SENSOR
-#define HALL_SENSOR_PIN A0
-
 // #############################################################################
 // ############################# I2C COMMUNICATION #############################
 // #############################################################################
@@ -172,7 +165,8 @@ uint8_t last_border_position = BORDER_LEFT;
 
 #define STATE_MAGNET_FOUND 13
 
-#define STATE_TUNNEL_FORWARD 14
+#define STATE_AVOID_TUNNEL_LEFT 14
+#define STATE_AVOID_TUNNEL_RIGHT 15
 
 // The state variables
 bool auto_control = false;
@@ -251,8 +245,12 @@ void set_state(uint8_t new_state, bool broadcast_to_clients) {
         }
 
         // Tunnel forward
-        if (state == STATE_TUNNEL_FORWARD) {
-            motor_move_forward();
+        if (state == STATE_AVOID_TUNNEL_LEFT) {
+            motor_turn_right();
+        }
+
+        if (state == STATE_AVOID_TUNNEL_RIGHT) {
+            motor_turn_left();
         }
 
         // Broadcast new state to clients
@@ -270,21 +268,26 @@ void update_state() {
     // Magent -> Tunnel -> Border -> Object
 
     #ifdef ACTIVATE_HALL_SENSOR
-    // Magnet detection
-    uint32_t analog_out = analogRead(HALL_SENSOR_PIN);
-    if (analog_out < 561)
-    {
-        set_state(STATE_MAGNET_FOUND, true);
-        Serial.println("Magnet found");
-        Serial.println(analog_out);
-    }
+        // Magnet detection
+        uint32_t analog_out = analogRead(HALL_SENSOR_PIN);
+        if (analog_out < 561) {
+            set_state(STATE_MAGNET_FOUND, true);
+
+            #ifdef DEBUG
+                Serial.print("Magnet found: ");
+                Serial.println(analog_out);
+            #endif
+        }
 
         else {
     #endif
 
     // Tunnel dection
-    if (distance_to_left < 25 && distance_to_right < 25) {
-        set_state(STATE_TUNNEL_FORWARD, true);
+    if (distance_to_left <= 5) {
+        set_state(STATE_AVOID_TUNNEL_LEFT, true);
+    }
+    else if (distance_to_right <= 5) {
+        set_state(STATE_AVOID_TUNNEL_RIGHT, true);
     }
 
     else {
@@ -305,7 +308,7 @@ void update_state() {
 
         else {
             // Object dection
-            if (distance_to_object < 20) {
+            if (distance_to_object <= 20) {
                 if (last_border_position == BORDER_LEFT) {
                     set_state(STATE_AVOID_OBJECT_TURN_RIGHT, true);
                 }
@@ -317,7 +320,11 @@ void update_state() {
     }
 
     // Tunnel deactivivation
-    if (state == STATE_TUNNEL_FORWARD && distance_to_left > 25 && distance_to_right > 25) {
+    if (state == STATE_AVOID_TUNNEL_LEFT && distance_to_left > 5) {
+        set_state(STATE_MOVE_FORWARD, true);
+    }
+
+    if (state == STATE_AVOID_TUNNEL_RIGHT && distance_to_right > 5) {
         set_state(STATE_MOVE_FORWARD, true);
     }
 
