@@ -12,8 +12,8 @@
 // #define DEBUG
 
 // Hall sensor defines
-// #define ACTIVATE_HALL_SENSOR
-#define HALL_SENSOR_PIN D1
+ #define ACTIVATE_HALL_SENSOR
+#define HALL_SENSOR_PIN A0
 
 // #############################################################################
 // ############################# I2C COMMUNICATION #############################
@@ -270,10 +270,14 @@ void update_state() {
     // Magent -> Tunnel -> Border -> Object
 
     #ifdef ACTIVATE_HALL_SENSOR
-        // Magnet detection
-        if (digitalRead(HALL_SENSOR_PIN) == HIGH) {
-            set_state(STATE_MAGNET_FOUND, true);
-        }
+    // Magnet detection
+    uint32_t analog_out = analogRead(HALL_SENSOR_PIN);
+    if (analog_out < 561)
+    {
+        set_state(STATE_MAGNET_FOUND, true);
+        Serial.println("Magnet found");
+        Serial.println(analog_out);
+    }
 
         else {
     #endif
